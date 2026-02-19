@@ -171,7 +171,9 @@ async function fetchDashboardData() {
       const data = await resCerts.json()
       // Process each certificate to add tokenId and isRevoked
       for (const cert of data) {
-        cert.tokenId = cert.nft?.token_id || cert.token_id || null
+        // Robust token_id resolving (handles both array and object responses from join)
+        const nftData = Array.isArray(cert.nft) ? cert.nft[0] : cert.nft;
+        cert.tokenId = nftData?.token_id || cert.token_id || null
         cert.isRevoked = false
         cert.processing = false
         
