@@ -109,7 +109,7 @@ const health = ref({});
 const loading = ref(false);
 const lastUpdated = ref(null);
 import { API_BASE_URL } from '../../apiConfig'
-const API_BASE = `${API_BASE_URL}/api/admin`
+const API_BASE = `${API_BASE_URL}/api`
 let pollInterval = null;
 
 const getStatusColor = (status) => {
@@ -128,7 +128,7 @@ async function checkHealth() {
   loading.value = true;
   try {
     const token = localStorage.getItem('adminToken');
-    const res = await fetch(`${API_BASE}/api/admin/health`, {
+    const res = await fetch(`${API_BASE}/admin/health`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
