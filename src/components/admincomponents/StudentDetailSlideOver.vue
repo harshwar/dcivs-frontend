@@ -187,7 +187,7 @@ const emit = defineEmits(['close']);
 const loading = ref(false);
 const details = ref(null);
 import { API_BASE_URL } from '../../apiConfig'
-const API_BASE = `${API_BASE_URL}/api/students`
+const API_BASE = `${API_BASE_URL}/api`
 
 async function fetchDetails() {
   if (!props.studentId) return;
@@ -195,7 +195,7 @@ async function fetchDetails() {
   loading.value = true;
   try {
     const token = localStorage.getItem('adminToken');
-    const res = await fetch(`${API_BASE}/api/students/${props.studentId}/details`, {
+    const res = await fetch(`${API_BASE}/students/${props.studentId}/details`, {
        headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
