@@ -99,7 +99,10 @@
                      <div>
                         <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Estimated Gas</h5>
                         <p class="text-sm font-bold text-blue-800 dark:text-blue-300">
-                           {{ formatGasCost(walletInfo.estimatedCostEth, walletInfo.ethPriceInr) }}
+                           ~{{ Number(walletInfo.estimatedCostEth).toFixed(6) }} ETH
+                        </p>
+                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
+                           {{ getSecondaryGasInfo(walletInfo.estimatedCostEth, walletInfo.ethPriceInr) }}
                         </p>
                      </div>
                   </div>
@@ -142,22 +145,15 @@ import { ref, watch, onUnmounted } from 'vue';
 import { API_BASE_URL } from '../../apiConfig';
 
 /**
- * Format ETH value to a human readable gas string.
- * Shows in Gwei if the value is very small, and appends an INR estimate.
+ * Get Gwei and INR string to display beneath the main ETH value.
  */
-function formatGasCost(ethValue, ethPriceInr) {
-  if (!ethValue) return '~0.00 ETH';
+function getSecondaryGasInfo(ethValue, ethPriceInr) {
+  if (!ethValue) return '';
   const num = Number(ethValue);
-  let displayStr = '';
   
-  if (num < 0.0001) {
-    const gwei = (num * 1000000000).toFixed(2);
-    displayStr = `${gwei} Gwei`;
-  } else {
-    displayStr = `~${num.toFixed(6)} ETH`;
-  }
+  const gwei = (num * 1000000000).toFixed(2);
+  let displayStr = `${gwei} Gwei`;
 
-  // Add INR Estimate if price is available
   if (ethPriceInr) {
     const inrValue = (num * ethPriceInr).toFixed(2);
     displayStr += ` (₹${inrValue})`;
