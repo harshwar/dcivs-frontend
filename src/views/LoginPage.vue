@@ -119,6 +119,26 @@
           <div v-if="successMessage" class="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-500/20 border border-green-200 dark:border-green-500/30 text-green-600 dark:text-green-200 text-sm text-center transition-colors">
             {{ successMessage }}
           </div>
+
+          <!-- Pending/Identity Blocking State -->
+          <div v-if="pendingState" class="mt-6 p-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 transition-all animate-fade-in">
+            <div class="flex flex-col items-center text-center">
+              <div class="text-3xl mb-3">
+                <span v-if="pendingState.code === 'PENDING_EMAIL'">✉️</span>
+                <span v-else-if="pendingState.code === 'PENDING_APPROVAL'">🕰️</span>
+                <span v-else-if="pendingState.code === 'REJECTED'">❌</span>
+              </div>
+              <h3 class="font-bold text-gray-900 dark:text-white mb-1">
+                {{ pendingState.code === 'PENDING_EMAIL' ? 'Verify Your Email' : pendingState.code === 'PENDING_APPROVAL' ? 'Identity Under Review' : 'Account Rejected' }}
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
+                {{ pendingState.message }}
+              </p>
+              <button @click="pendingState = null" class="text-xs font-bold text-indigo-500 hover:text-indigo-400 underline uppercase tracking-widest">
+                Try again
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -142,6 +162,7 @@ const isLoading = ref(false)
 const isPasskeyLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const pendingState = ref(null) // { code, message }
 const csrfToken = ref('')
 const passkeySupported = ref(false)
 
@@ -234,6 +255,12 @@ async function handleLogin() {
         router.push('/student-dashboard');
       }
     } else {
+      // Handle pending/rejected states
+      if (res.status === 403 && data.code) {
+        pendingState.value = { code: data.code, message: data.message }
+        return
+      }
+
       // Handle lockout response
       if (data.locked && data.remainingMs) {
         startLockoutTimer(data.remainingMs)

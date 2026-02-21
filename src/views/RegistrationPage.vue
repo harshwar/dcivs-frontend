@@ -8,7 +8,7 @@
       <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-fuchsia-500/20 blur-3xl rounded-full opacity-0 dark:opacity-100 transition-opacity"></div>
 
       <div class="relative z-10 w-full max-w-4xl">
-        <div class="auth-card overflow-hidden" data-particle-target="frame">
+        <div v-if="!registrationSuccess" class="auth-card overflow-hidden" data-particle-target="frame">
           <div class="md:flex">
             <div class="w-full p-6 md:p-8">
               <div class="flex items-center justify-between mb-6">
@@ -18,102 +18,52 @@
               </div>
 
               <form @submit.prevent="handleRegister" class="space-y-6">
+                <!-- FORM GROUPS -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                  <!-- Full Name -->
                   <div class="md:col-span-2">
                     <label class="label">Full Name</label>
-                    <input
-                      v-model="formData.fullName"
-                      required
-                      type="text"
-                      class="input-field"
-                      placeholder="John Doe"
-                      data-particle-target="detail"
-                    />
-                    <span class="text-[10px] text-gray-500 dark:text-white/40 block mt-1 italic ml-1">Example: FirstName MiddleName Surname</span>
+                    <input v-model="formData.fullName" required type="text" class="input-field" placeholder="John Doe" />
                   </div>
 
+                  <!-- Email -->
                   <div>
                     <label class="label">Email</label>
-                    <input
-                      v-model="formData.email"
-                      required
-                      type="email"
-                      class="input-field"
-                      placeholder="john@example.com"
-                      data-particle-target="detail"
-                    />
+                    <input v-model="formData.email" required type="email" class="input-field" placeholder="john@example.com" />
                   </div>
 
+                  <!-- Password -->
                   <div>
                     <label class="label">Password</label>
-                    <input
-                      v-model="formData.password"
-                      required
-                      type="password"
-                      minlength="6"
-                      class="input-field"
-                      placeholder="••••••••"
-                      data-particle-target="detail"
-                    />
+                    <input v-model="formData.password" required type="password" minlength="6" class="input-field" placeholder="••••••••" />
                   </div>
 
+                  <!-- Student ID -->
                   <div>
                     <label class="label">Student ID / Roll No</label>
-                    <input
-                      v-model="formData.rollNumber"
-                      required
-                      type="text"
-                      class="input-field"
-                      placeholder="e.g. 25tbscit006"
-                      data-particle-target="detail"
-                    />
-                    <span class="text-[10px] text-gray-500 dark:text-white/40 block mt-1 italic ml-1 leading-tight">Format: [Year][FY/SY/TY][Dept][RollNo]</span>
+                    <input v-model="formData.rollNumber" required type="text" class="input-field" placeholder="e.g. 25tbscit006" />
                   </div>
 
+                  <!-- Course Name -->
                   <div>
                     <label class="label">Course Name</label>
-                    <input
-                      v-model="formData.courseName"
-                      required
-                      type="text"
-                      class="input-field"
-                      placeholder="BSc IT"
-                      data-particle-target="detail"
-                    />
-                    <span class="text-[10px] text-gray-500 dark:text-white/40 block mt-1 italic ml-1">Default prefilled as BSCIT</span>
+                    <CustomSelect v-model="formData.courseName" :options="courseOptions" placeholder="Select Course" searchable />
                   </div>
 
+                  <!-- Year -->
                   <div class="md:col-span-2">
                     <label class="label">Year</label>
-                    <CustomSelect
-                      v-model="formData.year"
-                      :options="yearOptions"
-                      placeholder="Select Year"
-                    />
-                  </div>
-
-                </div>
-
-                <div class="flex items-center justify-between gap-4 pt-2">
-                  <div class="flex gap-3 w-full">
-                    <button
-                      type="submit"
-                      :disabled="isLoading"
-                      class="btn-primary w-full flex justify-center"
-                      data-particle-target="detail"
-                    >
-                      {{ isLoading ? 'Registering...' : 'Register Student' }}
-                    </button>
+                    <CustomSelect v-model="formData.year" :options="yearOptions" placeholder="Select Year" />
                   </div>
                 </div>
 
-                <div class="text-center mt-4">
-                   <p class="text-sm text-gray-600 dark:text-gray-400">Already have an account? <router-link to="/login" class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-200 font-medium">Login here</router-link></p>
-                </div>
+                <!-- Submit -->
+                <button type="submit" :disabled="isLoading" class="btn-primary w-full py-4 text-lg">
+                  {{ isLoading ? 'Processing...' : 'Register Account' }}
+                </button>
 
-                <div v-if="successMessage" class="alert-success mt-4">
-                  {{ successMessage }}
+                <div class="text-center mt-4 border-t border-gray-100 dark:border-white/5 pt-4">
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Already have an account? <router-link to="/login" class="text-indigo-600 dark:text-indigo-400 font-medium">Login</router-link></p>
                 </div>
 
                 <div v-if="errorMessage" class="alert-error mt-4">
@@ -122,6 +72,25 @@
               </form>
             </div>
           </div>
+        </div>
+
+        <!-- SUCCESS STATE -->
+        <div v-else class="auth-card p-12 text-center animate-fade-in">
+           <div class="w-24 h-24 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 mx-auto mb-8 shadow-inner shadow-indigo-500/10">
+             <span class="text-5xl">✉️</span>
+           </div>
+           <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Verification Sent!</h2>
+           <p class="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed max-w-lg mx-auto">
+             We've sent an email to <strong class="text-indigo-500">{{ formData.email }}</strong>. <br>
+             Please click the verification link to proceed with your identity review.
+           </p>
+           <div class="p-5 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm mb-8 text-left flex gap-4">
+             <span class="text-2xl">💡</span>
+             <p>Our administrative team will review your application once your email is verified. You'll receive a final activation email once your custodial wallet is ready.</p>
+           </div>
+           <router-link to="/login" class="btn-primary inline-block px-12 py-4">
+             Continue to Login
+           </router-link>
         </div>
       </div>
     </div>
@@ -146,6 +115,17 @@ const yearOptions = [
   { value: 'TY', label: 'Third Year (TY)' },
 ];
 
+const courseOptions = [
+  { value: 'BSCIT', label: 'B.Sc. IT' },
+  { value: 'BMS', label: 'BMS' },
+  { value: 'BCOM', label: 'B.Com' },
+  { value: 'BAF', label: 'B.Com Accounting & Finance' },
+  { value: 'BBI', label: 'B.Com Banking & Insurance' },
+  { value: 'BFM', label: 'B.Com Financial Markets' },
+  { value: 'BAMMC', label: 'B.A.M.M.C' },
+  { value: 'BSCCS', label: 'B.Sc. CS' },
+];
+
 const formData = ref({
   fullName: '',
   email: '',
@@ -159,6 +139,7 @@ const isLoading = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
 const csrfToken = ref('');
+const registrationSuccess = ref(false);
 
 // Fetch CSRF token on mount
 onMounted(async () => {
@@ -173,10 +154,34 @@ onMounted(async () => {
   }
 })
 
+function validateRollNumber(val) {
+  // Format: [Year][FY/SY/TY][Dept][RollNo] e.g. 25tbscit006
+  // Regex: 2 digits + (FY|SY|TY) + letters (dept) + 3 digits
+  const regex = /^\d{2}(FY|SY|TY)[A-Z]+\d{3}$/i;
+  return regex.test(val);
+}
+
 async function handleRegister() {
   isLoading.value = true;
   successMessage.value = '';
   errorMessage.value = '';
+
+  // 1. Data Normalization
+  const roll = formData.value.rollNumber.trim().toUpperCase().replace(/\s+/g, '');
+  const course = formData.value.courseName.toUpperCase();
+  
+  // 2. Format Validation
+  if (!validateRollNumber(roll)) {
+    errorMessage.value = 'Invalid Student ID format. Expected: 25TYBSCIT001';
+    isLoading.value = false;
+    return;
+  }
+
+  if (!formData.value.year) {
+    errorMessage.value = 'Please select your current year.';
+    isLoading.value = false;
+    return;
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -187,11 +192,11 @@ async function handleRegister() {
       },
       credentials: 'include',
       body: JSON.stringify({
-        full_name: formData.value.fullName,
-        email: formData.value.email,
+        full_name: formData.value.fullName.trim(),
+        email: formData.value.email.trim(),
         password: formData.value.password,
-        student_id_number: formData.value.rollNumber,
-        course_name: formData.value.courseName,
+        student_id_number: roll,
+        course_name: course,
         year: formData.value.year,
       }),
     });
@@ -199,16 +204,7 @@ async function handleRegister() {
     const data = await response.json();
 
     if (response.ok) {
-      // Save token
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      successMessage.value = `Welcome, ${data.user.full_name}! Redirecting...`;
-
-      setTimeout(() => {
-        router.push('/passkey-setup');
-      }, 1000);
-
+      registrationSuccess.value = true;
       // Clear form
       formData.value = {
         fullName: '',

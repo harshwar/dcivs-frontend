@@ -19,6 +19,7 @@ import DepartmentChart from '../components/admincomponents/analytics/DepartmentC
 import StatusDonutChart from '../components/admincomponents/analytics/StatusDonutChart.vue'
 import StudentFunnelChart from '../components/admincomponents/analytics/StudentFunnelChart.vue'
 import HealthMonitor from '../components/admincomponents/HealthMonitor.vue'
+import ApproveStudents from '../components/admincomponents/ApproveStudents.vue'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -384,7 +385,7 @@ function setTheme(dark) {
       
       <nav class="flex-1 space-y-2">
         <button 
-          v-for="tab in ['dashboard', 'health', 'records', 'students', 'issue', 'batch', 'logs', 'settings']"
+          v-for="tab in ['dashboard', 'health', 'approval', 'records', 'students', 'issue', 'batch', 'logs', 'settings']"
           :key="tab"
           @click="playClick(); activeTab = tab"
           :class="activeTab === tab 
@@ -394,13 +395,14 @@ function setTheme(dark) {
         >
           <span v-if="tab === 'dashboard'">📊</span>
           <span v-else-if="tab === 'health'">🏥</span>
+          <span v-else-if="tab === 'approval'">🛡️</span>
           <span v-else-if="tab === 'records'">📜</span>
           <span v-else-if="tab === 'students'">🎓</span>
           <span v-else-if="tab === 'issue'">✍️</span>
           <span v-else-if="tab === 'batch'">📤</span>
           <span v-else-if="tab === 'logs'">📜</span>
           <span v-else-if="tab === 'settings'">⚙️</span>
-          <span class="capitalize">{{ tab === 'issue' ? 'Register Record' : tab === 'batch' ? 'Batch Operations' : tab === 'logs' ? 'Activity Logs' : tab }}</span>
+          <span class="capitalize">{{ tab === 'issue' ? 'Register Record' : tab === 'batch' ? 'Batch Operations' : tab === 'logs' ? 'Activity Logs' : tab === 'approval' ? 'Approval Queue' : tab }}</span>
         </button>
       </nav>
 
@@ -412,7 +414,7 @@ function setTheme(dark) {
     <!-- Main Content -->
     <main class="flex-1 flex flex-col relative overflow-y-auto">
       <header class="flex items-center justify-between px-8 py-5 border-b border-transparent glass-header sticky top-0 z-20">
-        <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab }}</h2>
+        <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab === 'approval' ? 'Approval Queue' : activeTab }}</h2>
         <div class="flex items-center gap-4">
           <!-- Wallet Balance / Status -->
           <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 shadow-inner group relative">
@@ -554,6 +556,11 @@ function setTheme(dark) {
         <!-- STUDENTS TAB -->
         <div v-if="activeTab === 'students'" class="animate-fade-in">
           <StudentsList :students="students" />
+        </div>
+
+        <!-- APPROVAL TAB -->
+        <div v-if="activeTab === 'approval'" class="animate-fade-in">
+          <ApproveStudents />
         </div>
 
         <!-- ISSUE TAB -->
