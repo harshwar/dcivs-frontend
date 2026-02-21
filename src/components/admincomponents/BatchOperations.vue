@@ -28,7 +28,7 @@ const zipImages = ref({}) // filename -> blob
 const walletInfo = ref(null)
 
 // --- Helpers ---
-const getToken = () => localStorage.getItem('authToken')
+const getToken = () => localStorage.getItem('adminToken')
 
 const downloadTemplate = (type) => {
   let content = ''

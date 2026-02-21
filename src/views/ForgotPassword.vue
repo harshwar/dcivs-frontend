@@ -91,6 +91,21 @@ const email = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const emailSent = ref(false)
+const csrfToken = ref('')
+
+import { onMounted } from 'vue'
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/csrf-token`, {
+      credentials: 'include'
+    })
+    const data = await res.json()
+    csrfToken.value = data.csrfToken
+  } catch (err) {
+    console.error('Failed to fetch CSRF token:', err)
+  }
+})
 
 async function handleSubmit() {
   isLoading.value = true
@@ -99,7 +114,11 @@ async function handleSubmit() {
   try {
     const res = await fetch(`${API_BASE}/forgot-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-csrf-token': csrfToken.value
+      },
+      credentials: 'include',
       body: JSON.stringify({ email: email.value })
     })
 

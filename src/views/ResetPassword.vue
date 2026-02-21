@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
@@ -115,6 +115,19 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const resetComplete = ref(false)
 const isTokenError = ref(false)
+const csrfToken = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/csrf-token`, {
+      credentials: 'include'
+    })
+    const data = await res.json()
+    csrfToken.value = data.csrfToken
+  } catch (err) {
+    console.error('Failed to fetch CSRF token:', err)
+  }
+})
 
 async function handleReset() {
   if (newPassword.value !== confirmPassword.value) return
@@ -126,7 +139,11 @@ async function handleReset() {
   try {
     const res = await fetch(`${API_BASE}/reset-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-csrf-token': csrfToken.value
+      },
+      credentials: 'include',
       body: JSON.stringify({
         token,
         newPassword: newPassword.value
