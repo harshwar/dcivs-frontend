@@ -39,7 +39,7 @@
               'custom-select__option--focused': focusedIndex === index,
               'custom-select__option--disabled': option.disabled
             }]"
-            @click="selectOption(option)"
+            @click.stop="selectOption(option)"
             @mouseenter="focusedIndex = index"
             role="option"
             :aria-selected="modelValue === option.value"
@@ -101,7 +101,13 @@ function toggle() {
 function selectOption(option) {
   if (option.disabled) return
   emit('update:modelValue', option.value)
-  isOpen.value = false
+  
+  // Wrap the closure in nextTick to ensure the DOM updates before forcibly hiding it
+  nextTick(() => {
+    isOpen.value = false
+    searchQuery.value = ''
+    if (document.activeElement) document.activeElement.blur()
+  })
 }
 
 function handleTriggerKeydown(e) {

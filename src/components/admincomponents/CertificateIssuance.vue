@@ -4,7 +4,7 @@
 
     <div class="flex flex-col gap-4">
       <!-- STUDENT DROPDOWN -->
-      <label class="flex flex-col gap-1">
+      <div class="flex flex-col gap-1">
         <span class="text-gray-400 text-sm">Select Student</span>
       <CustomSelect
           v-model="selectedStudentId"
@@ -12,47 +12,53 @@
           placeholder="-- Choose a Student --"
           :searchable="true"
         />
-      </label>
+      </div>
 
       <!-- ACHIEVEMENT TITLE -->
-      <label class="flex flex-col gap-1">
+      <div class="flex flex-col gap-1">
         <span class="text-gray-400 text-sm">Achievement Title</span>
         <input
           v-model="title"
           class="input-field"
           placeholder="e.g. Bachelor of Science"
         />
-      </label>
+      </div>
 
       <!-- DEPARTMENT -->
-      <label class="flex flex-col gap-1">
+      <div class="flex flex-col gap-1">
         <span class="text-gray-400 text-sm">Department</span>
         <input
           v-model="department"
           class="input-field"
           placeholder="e.g. Computer Science"
         />
-      </label>
+      </div>
 
       <!-- DESCRIPTION -->
-      <label class="flex flex-col gap-1">
+      <div class="flex flex-col gap-1">
         <span class="text-gray-400 text-sm">Description</span>
         <textarea
           v-model="description"
           class="input-field h-24 resize-none"
           placeholder="Enter details about this record..."
         ></textarea>
-      </label>
+      </div>
 
       <!-- FILE UPLOAD -->
-      <label class="flex flex-col gap-1">
-        <span class="text-gray-400 text-sm">Achievement File (Image)</span>
+      <div class="flex flex-col gap-1">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400 text-sm">Achievement File (Image)</span>
+          <span v-if="isScanning" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
+            <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            AI Scanning...
+          </span>
+        </div>
         <FileUpload
           v-model="selectedFile"
           accept="image/*"
           hint="PNG, JPG, or WEBP"
         />
-      </label>
+      </div>
 
       <!-- SUBMIT BUTTON -->
       <button
@@ -77,6 +83,8 @@
       :file="selectedFile"
       :student="selectedStudent"
       :isProcessing="isIssuing"
+      :preVerifiedMatch="autoVerifiedMatch"
+      :preExtractedText="autoExtractedText"
       @close="showConfirmationModal = false"
       @confirm="confirmIssuance"
     />
@@ -84,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import CustomSelect from '../ui/CustomSelect.vue'
 import FileUpload from '../ui/FileUpload.vue'
 import IssuanceConfirmationModal from './IssuanceConfirmationModal.vue'
@@ -104,7 +112,68 @@ const description = ref('') // Brief detail about the cert
 const department = ref('') // Academic department
 const selectedFile = ref(null) // The actual certificate image/file
 const isIssuing = ref(false) // Loading state for the submit button
+const isScanning = ref(false) // Loading state for AI scanning
 const showConfirmationModal = ref(false) // Modal visibility
+
+const autoVerifiedMatch = ref(null);
+const autoExtractedText = ref('');
+
+// Automatically scan the certificate when an image AND a student are selected
+watch([selectedFile, selectedStudentId], async ([newFile, newStudentId]) => {
+  if (newFile && newStudentId) {
+    await scanCertificate(newFile);
+  } else if (newFile && !newStudentId) {
+    toast.warning('Please select a student to enable automatic verification and summarization.');
+  }
+});
+
+async function scanCertificate(file) {
+  isScanning.value = true;
+  autoVerifiedMatch.value = null;
+  autoExtractedText.value = '';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('studentName', selectedStudent.value?.name || '');
+    formData.append('studentRoll', selectedStudent.value?.roll || '');
+    
+    // Call the combined local OCR + Gemini AI backend endpoint
+    const res = await fetch(`${API_BASE_URL}/api/ai/verify-document`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('adminToken') || localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      
+      // Store verification results
+      autoVerifiedMatch.value = data.match;
+      autoExtractedText.value = data.extracted_text || '';
+
+      // Auto-fill fields if they are currently empty
+      if (!title.value && data.title) title.value = data.title;
+      if (!department.value && data.department) department.value = data.department;
+      if (!description.value && data.description) description.value = data.description;
+      
+      if (data.match) {
+        toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
+      } else {
+        toast.warning('AI Scan Complete, but could not automatically verify the student identity.');
+      }
+    } else {
+      throw new Error('Scan failed');
+    }
+  } catch (err) {
+    console.error('AI Scan Error:', err);
+    toast.error('AI Scanning failed. Please fill details manually.');
+  } finally {
+    isScanning.value = false;
+  }
+}
 
 const selectedStudent = computed(() => students.value.find(s => s.id === selectedStudentId.value))
 

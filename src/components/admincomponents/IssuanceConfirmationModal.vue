@@ -8,7 +8,7 @@
         
         <!-- Header -->
         <div class="bg-indigo-600 dark:bg-indigo-900/50 px-4 py-4 sm:px-6 flex justify-between items-center">
-          <h3 class="text-lg font-semibold leading-6 text-white" id="modal-title">verify Achievement Record</h3>
+          <h3 class="text-lg font-semibold leading-6 text-white" id="modal-title">Verify Achievement Record</h3>
           <button @click="$emit('close')" class="text-indigo-200 hover:text-white">✕</button>
         </div>
 
@@ -25,8 +25,7 @@
                  <!-- Scanning Overlay -->
                  <div v-if="scanning" class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center backdrop-blur-sm">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-3"></div>
-                    <p class="text-white font-medium">Scanning Document...</p>
-                    <p class="text-white/70 text-sm mt-1">{{ scanProgress }}%</p>
+                    <p class="text-white font-medium">Scanning Document Locally...</p>
                  </div>
               </div>
             </div>
@@ -53,7 +52,7 @@
                   <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Verification Status</h4>
                   
                   <div v-if="scanning" class="h-32 flex items-center justify-center text-gray-500 text-sm italic">
-                     Analyzing text...
+                     Extracting text with Local Engine...
                   </div>
 
                   <div v-else class="space-y-4">
@@ -63,7 +62,7 @@
                         <div>
                            <h5 class="text-sm font-bold text-green-800 dark:text-green-300">Verified Match</h5>
                            <p class="text-xs text-green-700 dark:text-green-400 mt-1">
-                              Found student name <b>"{{ matchedName }}"</b> in the document.
+                              AI confirmed student identity in document.
                            </p>
                         </div>
                      </div>
@@ -74,22 +73,41 @@
                         <div>
                            <h5 class="text-sm font-bold text-yellow-800 dark:text-yellow-300">Possible Mismatch</h5>
                            <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
-                              Could not automatically find <b>"{{ student?.name }}"</b> in the document.
+                              AI could not automatically find <b>"{{ student?.name }}"</b> in the document.
                            </p>
                            <p class="text-xs text-yellow-600 dark:text-yellow-500 mt-2 font-medium">Please verify manually before issuing.</p>
                         </div>
                      </div>
                      
                      <!-- Extracted Text Toggle -->
-                     <details class="group">
+                     <details class="group" v-if="extractedText">
                         <summary class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-indigo-500 select-none">
                            <span class="group-open:rotate-90 transition-transform">▶</span>
-                           View Extracted Text
+                           View AI Output Context
                         </summary>
                         <div class="mt-2 p-3 bg-gray-50 dark:bg-black rounded border border-gray-200 dark:border-gray-800 text-xs font-mono text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto whitespace-pre-wrap">
-                           {{ extractedText || 'No text detected.' }}
+                           {{ extractedText }}
                         </div>
                      </details>
+                  </div>
+               </div>
+
+               <!-- Estimated Gas Cost -->
+               <div v-if="walletInfo" class="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 flex justify-between items-center">
+                  <div class="flex items-center gap-3">
+                     <span class="text-blue-500 text-xl">⛽</span>
+                     <div>
+                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Estimated Gas</h5>
+                        <p class="text-sm font-bold text-blue-800 dark:text-blue-300">
+                           ~{{ walletInfo.estimatedCostEth }} ETH
+                        </p>
+                     </div>
+                  </div>
+                  <div class="text-right">
+                     <p class="text-xs text-gray-500 dark:text-gray-400">Current Balance:</p>
+                     <p class="text-xs font-mono font-bold" :class="Number(walletInfo.balanceEth) < Number(walletInfo.estimatedCostEth) ? 'text-red-500' : 'text-green-500 dark:text-green-400'">
+                        {{ walletInfo.balanceEth }} ETH
+                     </p>
                   </div>
                </div>
 
@@ -103,11 +121,11 @@
                   </button>
                   <button 
                     @click="$emit('confirm')"
-                    :disabled="scanning || isProcessing"
-                    class="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2"
+                    :disabled="scanning || isProcessing || (walletInfo && Number(walletInfo.balanceEth) < Number(walletInfo.estimatedCostEth))"
+                    class="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:shadow-none"
                   >
                      <span v-if="isProcessing" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                     Confirm & Issue
+                     {{ (walletInfo && Number(walletInfo.balanceEth) < Number(walletInfo.estimatedCostEth)) ? 'Insufficient ETH' : 'Confirm & Issue' }}
                   </button>
                </div>
 
@@ -121,40 +139,57 @@
 
 <script setup>
 import { ref, watch, onUnmounted } from 'vue';
-import Tesseract from 'tesseract.js';
+import { API_BASE_URL } from '../../apiConfig';
 
 const props = defineProps({
   isOpen: Boolean,
   file: File,
   student: Object,
-  isProcessing: Boolean
+  isProcessing: Boolean,
+  preVerifiedMatch: Boolean,
+  preExtractedText: String
 });
 
 const emit = defineEmits(['close', 'confirm']);
 
 const previewUrl = ref(null);
 const scanning = ref(false);
-const scanProgress = ref(0);
 const extractedText = ref('');
 const isMatch = ref(false);
-const matchedName = ref('');
+const walletInfo = ref(null);
 
-// Watch for file changes to start cleanup and scanning
+// Watch for file changes to start cleanup
 watch(() => props.file, (newFile) => {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
   
   if (newFile) {
     previewUrl.value = URL.createObjectURL(newFile);
-    if (props.isOpen) startScan();
   } else {
     previewUrl.value = null;
   }
 });
 
-// Watch for modal open to trigger scan if not done
-watch(() => props.isOpen, (open) => {
-  if (open && props.file && !extractedText.value) {
-    startScan();
+// Watch for modal open to apply pre-verified data
+watch(() => props.isOpen, async (open) => {
+  if (open) {
+    if (props.preExtractedText || props.preVerifiedMatch !== null) {
+      isMatch.value = props.preVerifiedMatch;
+      extractedText.value = props.preExtractedText;
+    } else if (props.file && !extractedText.value) {
+      startScan();
+    }
+    
+    // Fetch estimated gas cost for this transaction
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/nft/wallet-info`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken') || localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        walletInfo.value = await res.json();
+      }
+    } catch (e) {
+      console.error("Failed to fetch gas estimate:", e);
+    }
   }
 });
 
@@ -164,46 +199,34 @@ async function startScan() {
   scanning.value = true;
   extractedText.value = '';
   isMatch.value = false;
-  scanProgress.value = 0;
 
   try {
-    const { data: { text } } = await Tesseract.recognize(
-      props.file,
-      'eng',
-      { 
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            scanProgress.value = Math.floor(m.progress * 100);
-          }
-        }
-      }
-    );
+    const formData = new FormData();
+    formData.append('file', props.file);
+    formData.append('studentName', props.student.name || '');
+    formData.append('studentRoll', props.student.roll || '');
 
-    extractedText.value = text;
-    verifyText(text);
+    const res = await fetch(`${API_BASE_URL}/api/ai/verify-document`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('adminToken') || localStorage.getItem('token')}`
+      },
+      body: formData
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      isMatch.value = data.match;
+      extractedText.value = data.extracted_text || '';
+    } else {
+      throw new Error('API request failed');
+    }
 
   } catch (err) {
-    console.error('OCR Error:', err);
-    extractedText.value = 'Error scanning document.';
+    console.error('AI Verification Error:', err);
+    extractedText.value = 'Error verifying document with AI.';
   } finally {
     scanning.value = false;
-  }
-}
-
-function verifyText(text) {
-  const normalizedText = text.toLowerCase();
-  const studentName = props.student.name.toLowerCase();
-  const studentRoll = (props.student.roll || '').toLowerCase();
-  
-  // Split name into parts to allow partial match (e.g. "John Doe" matches "Mr. John Doe")
-  const nameParts = studentName.split(' ').filter(p => p.length > 2);
-  const foundName = nameParts.some(part => normalizedText.includes(part));
-  
-  const foundRoll = studentRoll && normalizedText.includes(studentRoll);
-
-  if (foundName || foundRoll) {
-      isMatch.value = true;
-      matchedName.value = foundName ? props.student.name : props.student.roll;
   }
 }
 

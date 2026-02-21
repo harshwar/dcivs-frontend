@@ -14,6 +14,7 @@ import { useConfirm } from '../composables/useConfirm.js'
 import StatCard from '../components/admincomponents/analytics/StatCard.vue'
 import IssuanceTrendChart from '../components/admincomponents/analytics/IssuanceTrendChart.vue'
 import StudentsList from '../components/admincomponents/StudentsList.vue'
+import CertificatesList from '../components/admincomponents/CertificatesList.vue'
 import DepartmentChart from '../components/admincomponents/analytics/DepartmentChart.vue'
 import StatusDonutChart from '../components/admincomponents/analytics/StatusDonutChart.vue'
 import StudentFunnelChart from '../components/admincomponents/analytics/StudentFunnelChart.vue'
@@ -92,6 +93,10 @@ const qrModal = reactive({
 // Analytics State
 const analytics = ref(null)
 const analyticsLoading = ref(false)
+const walletInfo = ref(null)
+const walletLoading = ref(false)
+const walletError = ref(null)
+
 const settingsForm = reactive({
   oldPassword: '',
   newPassword: '',
@@ -106,24 +111,6 @@ const settingsState = reactive({
 // Computed properties for dashboard summary statistics
 const totalStudents = computed(() => students.value.length)
 const totalIssued = computed(() => certificates.value.length)
-
-// Smart Search Logic
-const filteredCertificates = computed(() => {
-  if (!searchQuery.value) return certificates.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return certificates.value.filter(cert => {
-    const name = (cert.student?.full_name || cert.student_name || '').toLowerCase()
-    const title = (cert.title || '').toLowerCase()
-    const tokenId = (cert.tokenId || '').toString()
-    const date = new Date(cert.issue_date || cert.created_at).toLocaleDateString().toLowerCase()
-    
-    return name.includes(query) || 
-           title.includes(query) || 
-           tokenId.includes(query) ||
-           date.includes(query)
-  })
-})
 
 import { API_BASE_URL } from '../apiConfig'
 const API_BASE = `${API_BASE_URL}/api`
@@ -147,6 +134,27 @@ async function fetchDashboardData() {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     if (resStudents.ok) students.value = await resStudents.json()
+
+    // 1.1 Fetch Wallet Info
+    walletLoading.value = true
+    walletError.value = null
+    try {
+      const resWallet = await fetch(`${API_BASE}/nft/wallet-info`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (resWallet.ok) {
+        walletInfo.value = await resWallet.json()
+      } else {
+        const errData = await resWallet.json()
+        walletError.value = errData.error || 'Connection Failed'
+        // toast.error(`Wallet Error: ${walletError.value}`)
+      }
+    } catch (e) {
+      console.error('Wallet fetch error:', e)
+      walletError.value = 'Blockchain Disconnected'
+    } finally {
+      walletLoading.value = false
+    }
 
     // 1.5 Fetch Analytics
     analyticsLoading.value = true
@@ -376,7 +384,7 @@ function setTheme(dark) {
       
       <nav class="flex-1 space-y-2">
         <button 
-          v-for="tab in ['dashboard', 'health', 'students', 'issue', 'batch', 'logs', 'settings']"
+          v-for="tab in ['dashboard', 'health', 'records', 'students', 'issue', 'batch', 'logs', 'settings']"
           :key="tab"
           @click="playClick(); activeTab = tab"
           :class="activeTab === tab 
@@ -386,6 +394,7 @@ function setTheme(dark) {
         >
           <span v-if="tab === 'dashboard'">📊</span>
           <span v-else-if="tab === 'health'">🏥</span>
+          <span v-else-if="tab === 'records'">📜</span>
           <span v-else-if="tab === 'students'">🎓</span>
           <span v-else-if="tab === 'issue'">✍️</span>
           <span v-else-if="tab === 'batch'">📤</span>
@@ -405,6 +414,28 @@ function setTheme(dark) {
       <header class="flex items-center justify-between px-8 py-5 border-b border-transparent glass-header sticky top-0 z-20">
         <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab }}</h2>
         <div class="flex items-center gap-4">
+          <!-- Wallet Balance / Status -->
+          <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 shadow-inner group relative">
+             <div v-if="walletLoading" class="flex items-center gap-2 text-gray-400">
+                <div class="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                <span class="text-xs font-medium">Syncing...</span>
+             </div>
+             
+             <div v-else-if="walletError" class="flex items-center gap-2 text-red-500 group-hover:text-red-400 transition-colors">
+                <span class="text-xs">⚠️</span>
+                <span class="font-bold cursor-help" :title="walletError">Disconnected</span>
+             </div>
+
+             <div v-else-if="walletInfo" class="flex items-center gap-2 font-mono">
+                <span class="text-gray-500 text-xs hidden lg:inline">Wallet:</span>
+                <span class="text-blue-500 font-bold dark:text-blue-400">{{ walletInfo.balanceEth }} ETH</span>
+             </div>
+
+             <div v-else class="text-gray-400 text-xs italic">
+                Wait...
+             </div>
+          </div>
+
           <ThemeToggle />
           <button @click="fetchDashboardData" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium">↻ Refresh</button>
         </div>
@@ -501,94 +532,16 @@ function setTheme(dark) {
             <p>Loading analytics...</p>
           </div>
 
-          <!-- Recent Activity Table -->
-          <div class="glass-panel rounded-2xl overflow-hidden shadow-sm">
-             <div class="px-6 py-4 border-b border-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
-               <h3 class="font-bold text-gray-900 dark:text-white">Recent Registrations</h3>
-               <div class="relative">
-                 <input 
-                   v-model="searchQuery"
-                   type="text" 
-                   placeholder="Search student, token, date..." 
-                   class="glass-input pl-10 pr-4 py-2 rounded-lg text-sm w-full md:w-64"
-                 />
-                 <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
-               </div>
-             </div>
-             <div class="overflow-x-auto">
-               <table class="w-full text-left">
-                 <thead class="bg-gray-50 dark:bg-[#1b2127] text-gray-500 dark:text-gray-400 text-sm">
-                   <tr>
-                     <th class="px-6 py-3">Student</th>
-                     <th class="px-6 py-3">Achievement</th>
-                     <th class="px-6 py-3">Token ID</th>
-                     <th class="px-6 py-3">Date</th>
-                     <th class="px-6 py-3">Status</th>
-                     <th class="px-6 py-3">Actions</th>
-                   </tr>
-                 </thead>
-                 <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
-                   <tr v-for="cert in filteredCertificates" :key="cert.id" class="hover:bg-gray-50 dark:hover:bg-[#1b2127]/50 transition">
-                     <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ cert.student?.full_name || cert.student_name || 'Unknown' }}</td>
-                     <td class="px-6 py-4 text-gray-600 dark:text-gray-300">{{ cert.title }}</td>
-                     <td class="px-6 py-4 font-mono text-gray-500 dark:text-gray-400">{{ cert.tokenId ? `#${cert.tokenId}` : 'N/A' }}</td>
-                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ formatDate(cert.issue_date || cert.created_at) }}</td>
-                     <td class="px-6 py-4">
-                       <span 
-                         v-if="cert.tokenId"
-                         class="px-2 py-1 rounded text-xs border font-medium"
-                         :class="cert.isRevoked 
-                           ? 'bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-300 border-red-200 dark:border-red-500/30' 
-                           : 'bg-green-50 dark:bg-green-500/20 text-green-600 dark:text-green-300 border-green-200 dark:border-green-500/30'"
-                       >
-                         {{ cert.isRevoked ? 'Revoked' : 'Valid' }}
-                       </span>
-                       <span v-else class="text-gray-400 dark:text-gray-500 text-xs">Pending</span>
-                     </td>
-                     <td class="px-6 py-4">
-                       <div class="flex gap-2">
-                         <!-- View -->
-                         <a 
-                           v-if="cert.tokenId"
-                           :href="`/verify/${cert.tokenId}`" 
-                           target="_blank"
-                           class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 text-xs px-2 py-1 border border-blue-200 dark:border-blue-400/30 rounded hover:bg-blue-50 dark:hover:bg-blue-500/10"
-                         >
-                           👁 View
-                         </a>
-                         <!-- QR -->
-                         <button 
-                           v-if="cert.tokenId"
-                           @click="showQRCode(cert)"
-                           class="text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300 text-xs px-2 py-1 border border-purple-200 dark:border-purple-400/30 rounded hover:bg-purple-50 dark:hover:bg-purple-500/10"
-                         >
-                           📱 QR
-                         </button>
-                         <!-- Revoke/Reinstate -->
-                         <button 
-                           v-if="cert.tokenId"
-                           @click="toggleRevocation(cert)"
-                           :disabled="cert.processing"
-                           class="text-xs px-2 py-1 border rounded transition-colors"
-                           :class="cert.isRevoked 
-                             ? 'text-green-500 dark:text-green-400 border-green-200 dark:border-green-400/30 hover:bg-green-50 dark:hover:bg-green-500/10' 
-                             : 'text-red-500 dark:text-red-400 border-red-200 dark:border-red-400/30 hover:bg-red-50 dark:hover:bg-red-500/10'"
-                         >
-                           <span v-if="cert.processing">...</span>
-                           <span v-else>{{ cert.isRevoked ? '✓ Reinstate' : '✗ Revoke' }}</span>
-                         </button>
-                       </div>
-                     </td>
-                   </tr>
-                   <tr v-if="filteredCertificates.length === 0">
-                     <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                       {{ searchQuery ? 'No matching records found.' : 'No certificates issued yet.' }}
-                     </td>
-                   </tr>
-                 </tbody>
-               </table>
-             </div>
-          </div>
+        </div>
+
+        <!-- RECORDS TAB -->
+        <div v-if="activeTab === 'records'" class="animate-fade-in px-4 md:px-8 py-6">
+           <CertificatesList 
+             :certificates="certificates" 
+             v-model:searchQuery="searchQuery"
+             @qr="showQRCode"
+             @toggle-revocation="toggleRevocation"
+           />
         </div>
 
 

@@ -656,8 +656,17 @@ function onPasswordInput() {
                       Issued: {{ asset.issueDate ? new Date(asset.issueDate).toLocaleDateString() : 'N/A' }}
                     </p>
                     <div class="flex items-center gap-2 mt-3">
-                         <span class="text-[10px] bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-700/50 px-2 py-0.5 rounded uppercase font-bold tracking-wider transition-colors">
+                         <span 
+                           v-if="!asset.isRevoked"
+                           class="text-[10px] bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-700/50 px-2 py-0.5 rounded uppercase font-bold tracking-wider transition-colors"
+                         >
                             Verified
+                         </span>
+                         <span 
+                           v-else
+                           class="text-[10px] bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700/50 px-2 py-0.5 rounded uppercase font-bold tracking-wider transition-colors"
+                         >
+                            ⚠️ Revoked
                          </span>
                     </div>
                   </div>
@@ -691,11 +700,14 @@ function onPasswordInput() {
 
         <!-- Content -->
         <div class="p-6">
-           <div class="mb-4">
-              <p class="text-sky-600 dark:text-sky-400 text-xs font-bold uppercase tracking-wider mb-1 transition-colors">{{ selectedAsset.department || 'University Achievement' }}</p>
-              <h2 class="text-gray-900 dark:text-white text-2xl font-bold leading-tight transition-colors">{{ selectedAsset.title }}</h2>
-              <p class="text-gray-500 dark:text-gray-400 text-sm mt-1 transition-colors">Issued to You on {{ selectedAsset.issueDate ? new Date(selectedAsset.issueDate).toLocaleDateString() : 'Unknown Date' }}</p>
-           </div>
+            <div class="mb-4">
+               <div v-if="selectedAsset.isRevoked" class="mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-900/30 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-xs uppercase tracking-widest">
+                  <span>⚠️</span> CERTIFICATE REVOKED BY INSTITUTION
+               </div>
+               <p class="text-sky-600 dark:text-sky-400 text-xs font-bold uppercase tracking-wider mb-1 transition-colors">{{ selectedAsset.department || 'University Achievement' }}</p>
+               <h2 class="text-gray-900 dark:text-white text-2xl font-bold leading-tight transition-colors">{{ selectedAsset.title }}</h2>
+               <p class="text-gray-500 dark:text-gray-400 text-sm mt-1 transition-colors">Issued to You on {{ selectedAsset.issueDate ? new Date(selectedAsset.issueDate).toLocaleDateString() : 'Unknown Date' }}</p>
+            </div>
            
            <div class="bg-gray-50 dark:bg-[#111418] rounded-xl p-4 mb-6 border border-gray-200 dark:border-[#283039] transition-colors">
               <h4 class="text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2 transition-colors">Description</h4>

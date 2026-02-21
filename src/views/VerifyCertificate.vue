@@ -90,6 +90,23 @@
             </div>
           </div>
 
+          <!-- Certificate Image Preview -->
+          <div v-if="verification.imageUrl" class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1b2127] shadow-sm transition-all duration-300">
+             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 transition-colors">Digital Certificate Preview</h3>
+             <div class="relative group cursor-zoom-in rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800 shadow-inner bg-gray-50 dark:bg-gray-900">
+                <img 
+                  :src="`${API_BASE_URL}${verification.imageUrl}`" 
+                  alt="Certificate NFT Image"
+                  class="w-full h-auto object-contain max-h-[500px] transition-transform duration-500 group-hover:scale-[1.02]"
+                  @error="(e) => e.target.style.display = 'none'"
+                />
+                <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                   <span class="bg-white/90 dark:bg-black/80 px-4 py-2 rounded-full text-sm font-bold shadow-xl">Verified Achievement</span>
+                </div>
+             </div>
+             <p class="text-xs text-gray-500 mt-3 text-center italic">Cryptographically linked image stored on IPFS</p>
+          </div>
+
           <!-- Record Details -->
           <div class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1b2127] shadow-sm transition-all duration-300">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 transition-colors">Record Details</h3>
