@@ -149,7 +149,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { API_BASE_URL } from '../../../apiConfig';
+import { API_BASE_URL } from '../../apiConfig';
 // Use ethers from window as initialized in WalletDashboard
 const ethers = window.ethers;
 
