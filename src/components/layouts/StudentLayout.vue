@@ -35,14 +35,6 @@
         >
           <span>⚙️</span> Settings
         </router-link>
-        <router-link 
-          to="/student/security" 
-          @click="playClick"
-          class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-[#1b2127] hover:text-gray-900 dark:hover:text-white transition-all text-gray-500 dark:text-gray-400" 
-          active-class="bg-gray-100 dark:bg-[#283039] text-gray-900 dark:text-white shadow-sm font-medium"
-        >
-          <span>🛡️</span> Security
-        </router-link>
       </nav>
 
       <button @click="logout" class="flex items-center gap-3 px-4 py-3 mt-auto text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all">
@@ -72,10 +64,6 @@
       <router-link to="/student/settings" class="flex flex-col items-center gap-1 group" active-class="text-indigo-600 dark:text-indigo-400">
         <span class="text-xl group-active:scale-125 transition-transform">⚙️</span>
         <span class="text-[10px] font-medium transition-colors">Settings</span>
-      </router-link>
-      <router-link to="/student/security" class="flex flex-col items-center gap-1 group" active-class="text-indigo-600 dark:text-indigo-400">
-        <span class="text-xl group-active:scale-125 transition-transform">🛡️</span>
-        <span class="text-[10px] font-medium transition-colors">Security</span>
       </router-link>
     </nav>
   </div>

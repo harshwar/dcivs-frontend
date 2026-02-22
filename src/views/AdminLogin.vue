@@ -123,7 +123,8 @@ async function handleAdminLogin() {
       credentials: 'include', // Send cookies (including CSRF cookie)
       body: JSON.stringify({
         email: email.value,
-        password: password.value
+        password: password.value,
+        expectedRole: 'admin' // Ensure backend knows we only want admin access
       })
     })
 
