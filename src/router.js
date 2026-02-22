@@ -15,7 +15,8 @@ const routes = [
     children: [
       { path: 'dashboard', name: 'StudentDashboard', component: () => import('./views/StudentDashboard.vue') },
       { path: 'wallet', name: 'WalletDashboard', component: () => import('./views/WalletDashboard.vue') },
-      { path: 'settings', name: 'Settings', component: () => import('./views/SettingsPage.vue') }
+      { path: 'settings', name: 'Settings', component: () => import('./views/SettingsPage.vue') },
+      { path: 'security', name: 'SecuritySettings', component: () => import('./views/student/SecuritySettings.vue') }
     ]
   },
   

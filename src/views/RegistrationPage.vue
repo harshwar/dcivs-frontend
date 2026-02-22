@@ -117,12 +117,6 @@ const yearOptions = [
 
 const courseOptions = [
   { value: 'BSCIT', label: 'B.Sc. IT' },
-  { value: 'BMS', label: 'BMS' },
-  { value: 'BCOM', label: 'B.Com' },
-  { value: 'BAF', label: 'B.Com Accounting & Finance' },
-  { value: 'BBI', label: 'B.Com Banking & Insurance' },
-  { value: 'BFM', label: 'B.Com Financial Markets' },
-  { value: 'BAMMC', label: 'B.A.M.M.C' },
   { value: 'BSCCS', label: 'B.Sc. CS' },
 ];
 
