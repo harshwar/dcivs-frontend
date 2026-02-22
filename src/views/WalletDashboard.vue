@@ -6,6 +6,7 @@ import ThemeToggle from '../components/ThemeToggle.vue';
 import { Wallet } from 'ethers'; // Ethers.js for local wallet management
 import AudioService from '../services/audio';
 import { useToast } from '../composables/useToast.js';
+import { generateLinkedInCertUrl } from '../utils/linkedinUrlGenerator';
 
 const toast = useToast();
 
@@ -718,6 +719,17 @@ function onPasswordInput() {
 
            <!-- Action Buttons -->
            <div class="space-y-3">
+             <!-- Add to LinkedIn Button -->
+             <a 
+               :href="generateLinkedInCertUrl(selectedAsset)"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="w-full bg-[#0a66c2] hover:bg-[#004182] text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
+             >
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.96 0-1.5-.63-1.5-1.42 0-.8.55-1.42 1.53-1.42.97 0 1.5.62 1.5 1.42 0 .79-.53 1.42-1.53 1.42zm11.5 11.27h-3v-5.6c0-1.42-.5-2.39-1.78-2.39-.97 0-1.55.65-1.8 1.28-.09.23-.11.55-.11.87v5.84h-3s.04-8.1 0-8.9h3v1.26c.4-.61 1.1-1.48 2.68-1.48 1.96 0 3.43 1.28 3.43 4.02v5.1z"/></svg>
+               Add to LinkedIn
+             </a>
+
              <!-- Share QR Button -->
              <button 
                @click="showQRCode(selectedAsset)"
