@@ -118,12 +118,10 @@ const showConfirmationModal = ref(false) // Modal visibility
 const autoVerifiedMatch = ref(null);
 const autoExtractedText = ref('');
 
-// Automatically scan the certificate when an image AND a student are selected
-watch([selectedFile, selectedStudentId], async ([newFile, newStudentId]) => {
-  if (newFile && newStudentId) {
+watch(selectedFile, async (newFile) => {
+  // If a file is uploaded but student is blank, it runs a 'blind scan' to auto-find them.
+  if (newFile) {
     await scanCertificate(newFile);
-  } else if (newFile && !newStudentId) {
-    toast.warning('Please select a student to enable automatic verification and summarization.');
   }
 });
 
@@ -159,10 +157,45 @@ async function scanCertificate(file) {
       if (!department.value && data.department) department.value = data.department;
       if (!description.value && data.description) description.value = data.description;
       
-      if (data.match) {
-        toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
+      // If we did a blind scan (no student selected), attempt to auto-match using the raw OCR text
+      if (!selectedStudentId.value && data.raw_text) {
+        const rawText = data.raw_text.toLowerCase();
+        let matchedStudent = null;
+
+        // Pass 1: Strict Check for Exact Roll Number
+        for (const student of students.value) {
+          if (student.roll && rawText.includes(student.roll.toLowerCase())) {
+            matchedStudent = student;
+            break;
+          }
+        }
+
+        // Pass 2: Fallback check for exact Full Name match
+        if (!matchedStudent) {
+          for (const student of students.value) {
+            if (student.name && rawText.includes(student.name.toLowerCase())) {
+              matchedStudent = student;
+              break;
+            }
+          }
+        }
+
+        if (matchedStudent) {
+          selectedStudentId.value = matchedStudent.id;
+          autoVerifiedMatch.value = true;
+          toast.success(`Identity auto-detected: ${matchedStudent.name}! ✨`);
+        } else {
+          toast.warning('AI Scan Complete, but could not auto-identify student. Please select manually.');
+        }
       } else {
-        toast.warning('AI Scan Complete, but could not automatically verify the student identity.');
+        // Standard scan notification if a student was already chosen
+        if (data.match) {
+          toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
+        } else if (selectedStudentId.value) {
+          toast.warning('AI Scan Complete, but could not mathematically verify the selected student identity.');
+        } else {
+          toast.success('AI Scan Complete: Extracted details successfully.');
+        }
       }
     } else {
       throw new Error('Scan failed');

@@ -67,7 +67,7 @@
         <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <span>🛡️</span> Wallet PIN
         </h3>
-        <p class="text-sm text-gray-500 mt-1">Your 6-digit PIN is required to unlock your blockchain wallet to view or transfer certificates.</p>
+        <p class="text-sm text-gray-500 mt-1">Your 6-digit PIN is required to unlock your blockchain wallet to safely view your certificates.</p>
       </div>
       <div class="p-6">
         <div v-if="hasWalletPin" class="mb-6 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-start gap-3">

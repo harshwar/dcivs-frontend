@@ -1,7 +1,7 @@
 // src/config.js
 
 // This is the address of the contract you deployed from your Hardhat project
-export const contractAddress = '0x8b0d0A228D18b6e1537388b7a69265988533ed7F'
+export const contractAddress = '0x1D5D9EbDcB8BeE0F7431d9b2175859e39cE78BD4'
 // You must copy the new ABI from your recompiled Hardhat project
 export const contractABI = [
   // ... your ABI array
