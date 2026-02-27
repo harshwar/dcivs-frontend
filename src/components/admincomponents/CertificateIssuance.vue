@@ -170,12 +170,20 @@ async function scanCertificate(file) {
           }
         }
 
-        // Pass 2: Fallback check for exact Full Name match
+        // Pass 2: Fallback check for fuzzy Full Name match
         if (!matchedStudent) {
           for (const student of students.value) {
-            if (student.name && rawText.includes(student.name.toLowerCase())) {
-              matchedStudent = student;
-              break;
+            if (student.name) {
+              // Split name into major parts to ignore spacing/newlines from OCR Engine
+              const nameParts = student.name.toLowerCase().split(' ').filter(p => p.length > 2);
+              
+              // Verify ALL significant parts of the name exist somewhere in the raw text
+              const allPartsFound = nameParts.length > 0 && nameParts.every(part => rawText.includes(part));
+              
+              if (allPartsFound) {
+                matchedStudent = student;
+                break;
+              }
             }
           }
         }
