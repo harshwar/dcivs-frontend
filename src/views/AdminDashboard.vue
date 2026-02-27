@@ -40,17 +40,26 @@ const certificates = ref([])
 const logs = ref([])
 const logFilter = ref('all')
 
-// Relative time helper
+// Utility: Relative time formatter
 function relativeTime(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
+  if (!dateStr) return '-'
+  // Append 'Z' to force UTC parsing if not already present, so browser converts to local time
+  const utcDateStr = dateStr.endsWith('Z') ? dateStr : `${dateStr}Z`
+  const date = new Date(utcDateStr)
+  
+  if (isNaN(date.getTime())) return dateStr
+
+  const diffMs = Date.now() - date.getTime()
+  const diffSec = Math.floor(diffMs / 1000)
+  
+  if (diffSec < 60) return 'Just now'
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+  
+  const hrs = Math.floor(diffSec / 3600)
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
+  return date.toLocaleDateString()
 }
 
 // Per-action color classes
@@ -360,7 +369,8 @@ function logout() {
 // Utility: Formats date strings into a localized readable format (e.g., MM/DD/YYYY)
 function formatDate(dateStr) {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString()
+  const utcDateStr = dateStr.endsWith('Z') ? dateStr : `${dateStr}Z`
+  return new Date(utcDateStr).toLocaleDateString()
 }
 
 // Automatically fetch data when the component is mounted to the DOM
@@ -606,7 +616,7 @@ function setTheme(dark) {
                  </thead>
                  <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
                    <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-gray-50 dark:hover:bg-[#283039]/50 transition text-sm">
-                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap" :title="new Date(log.timestamp).toLocaleString()">
+                     <td class="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap" :title="new Date(log.timestamp.endsWith('Z') ? log.timestamp : log.timestamp + 'Z').toLocaleString()">
                        {{ relativeTime(log.timestamp) }}
                      </td>
                      <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-sm">{{ log.user }}</td>
