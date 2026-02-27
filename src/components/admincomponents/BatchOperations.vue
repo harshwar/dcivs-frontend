@@ -6,6 +6,7 @@ import Tesseract from 'tesseract.js'
 
 const toast = useToast()
 import { API_BASE_URL } from '../../apiConfig'
+import { standardizeFileToPNG } from '../../utils/fileStandardizer.js'
 const API_BASE = `${API_BASE_URL}/api`
 
 // --- State ---
@@ -23,9 +24,13 @@ const expandedRow = ref(null)
 // --- Issuance State
 const issueCsvFile = ref(null)
 const issueZipFile = ref(null)
-const parsedRecords = ref([]) // { data: row, image: blob, status: 'pending'|'verified'|'mismatch', message: '' }
+const parsedRecords = ref([]) // { id, data: row, image: blob, status, message }
 const zipImages = ref({}) // filename -> blob
 const walletInfo = ref(null)
+
+// --- Preview Modal State ---
+const previewRecord = ref(null) 
+const previewImageUrl = ref(null)
 
 // --- Helpers ---
 const getToken = () => localStorage.getItem('adminToken')
@@ -150,12 +155,37 @@ const prepareBatch = async () => {
     const imagePromises = []
     
     zip.forEach((path, entry) => {
-      if (!entry.dir && (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg'))) {
+      const lowerPath = path.toLowerCase()
+      if (!entry.dir && (
+          lowerPath.endsWith('.png') || 
+          lowerPath.endsWith('.jpg') || 
+          lowerPath.endsWith('.jpeg') || 
+          lowerPath.endsWith('.pdf') || 
+          lowerPath.endsWith('.heic') || 
+          lowerPath.endsWith('.webp')
+      )) {
         imagePromises.push(
-          entry.async('blob').then(blob => {
-            // Store by basename (e.g. "image.png" -> blob)
-            const filename = path.split('/').pop()
-            zipImages.value[filename] = blob
+          entry.async('blob').then(async (rawBlob) => {
+            try {
+              // The zip file entry doesn't reliably have a mimeType, so we guess from extension
+              let mimeType = 'image/png'
+              if (lowerPath.endsWith('.pdf')) mimeType = 'application/pdf'
+              else if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) mimeType = 'image/jpeg'
+              else if (lowerPath.endsWith('.webp')) mimeType = 'image/webp'
+              else if (lowerPath.endsWith('.heic')) mimeType = 'image/heic'
+
+              // Standardize into a uniform PNG
+              const cleanPngBlob = await standardizeFileToPNG(rawBlob, mimeType)
+
+              // Store by basename (so the CSV can still reference "image.png" or "document.pdf")
+              const filename = path.split('/').pop()
+              zipImages.value[filename] = cleanPngBlob
+            } catch (err) {
+              console.error(`Failed to standardize ${path}:`, err)
+              // Store null so the CSV matching logic flags it as 'error / image not found'
+              const filename = path.split('/').pop()
+              zipImages.value[filename] = null
+            }
           })
         )
       }
@@ -330,6 +360,20 @@ const stats = computed(() => {
   parsedRecords.value.forEach(r => s[r.status]++)
   return s
 })
+
+// Preview
+const openPreview = (rec) => {
+  if (!rec.image) return;
+  previewRecord.value = rec;
+  previewImageUrl.value = URL.createObjectURL(rec.image);
+}
+const closePreview = () => {
+  previewRecord.value = null;
+  if (previewImageUrl.value) {
+    URL.revokeObjectURL(previewImageUrl.value);
+    previewImageUrl.value = null;
+  }
+}
 </script>
 
 <template>
@@ -528,9 +572,9 @@ const stats = computed(() => {
              <p class="text-xs text-gray-500 mt-2">Cols: <code>student_id, title, description, department, issue_date, image_filename</code></p>
           </div>
           <div class="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
-             <h4 class="text-yellow-300 font-bold mb-3">2. Images (ZIP)</h4>
+             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">2. Upload Certificate Images/PDFs (ZIP)</p>
+            <p class="text-xs text-gray-500 mb-2">Must contain the files referenced in the CSV (PNG, JPG, PDF, WEBP, HEIC)</p>
              <input type="file" accept=".zip" @change="handleIssueZip" class="w-full text-sm text-gray-400"/>
-             <p class="text-xs text-gray-500 mt-2">Contains all images referenced in CSV.</p>
           </div>
        </div>
 
@@ -598,9 +642,10 @@ const stats = computed(() => {
                    <tr>
                       <th class="px-4 py-3">Student ID</th>
                       <th class="px-4 py-3">Title</th>
-                      <th class="px-4 py-3">Image</th>
+                      <th class="px-4 py-3">File Reference</th>
                       <th class="px-4 py-3">Date</th>
                       <th class="px-4 py-3">Status</th>
+                      <th class="px-4 py-3 w-16 text-center">Preview</th>
                    </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-700">
@@ -618,9 +663,77 @@ const stats = computed(() => {
                             {{ rec.message }}
                          </span>
                       </td>
+                      <td class="px-4 py-3 text-center">
+                         <button 
+                           v-if="rec.image" 
+                           @click="openPreview(rec)" 
+                           class="p-2 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-700"
+                           title="Preview Record Match"
+                         >
+                           👁️
+                         </button>
+                      </td>
                    </tr>
                 </tbody>
              </table>
+          </div>
+       </div>
+
+       <!-- Preview Modal -->
+       <div v-if="previewRecord" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" @click.self="closePreview">
+          <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+             <!-- Image Half -->
+             <div class="md:w-1/2 bg-[#0d1117] flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden">
+                <img :src="previewImageUrl" alt="Standardized Preview" class="max-w-full max-h-[40vh] md:max-h-[80vh] object-contain rounded drop-shadow-lg" />
+                <div class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded text-xs text-green-400 font-mono border border-green-500/30">
+                  Formatted PNG Ready
+                </div>
+             </div>
+             
+             <!-- Details Half -->
+             <div class="md:w-1/2 p-8 flex flex-col">
+                <div class="flex justify-between items-start mb-6">
+                   <div>
+                     <h3 class="text-2xl font-bold text-white mb-1">Batch Record Match</h3>
+                     <p class="text-sm text-gray-400 font-mono">ID: {{ previewRecord.data.student_id }}</p>
+                   </div>
+                   <button @click="closePreview" class="text-gray-500 hover:text-white transition p-1 bg-gray-800 rounded">
+                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                   </button>
+                </div>
+
+                <div class="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                   <div class="bg-gray-800/50 border border-gray-800 rounded-xl p-4">
+                     <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Achievement Title</label>
+                     <p class="text-white font-medium">{{ previewRecord.data.title }}</p>
+                   </div>
+
+                   <div class="grid grid-cols-2 gap-4">
+                     <div class="bg-gray-800/50 border border-gray-800 rounded-xl p-4">
+                       <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Department</label>
+                       <p class="text-gray-300">{{ previewRecord.data.department || '—' }}</p>
+                     </div>
+                     <div class="bg-gray-800/50 border border-gray-800 rounded-xl p-4">
+                       <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Issue Date Override</label>
+                       <p class="text-gray-300 font-mono">{{ previewRecord.data.issue_date || 'Now' }}</p>
+                     </div>
+                   </div>
+
+                   <div class="bg-gray-800/50 border border-gray-800 rounded-xl p-4">
+                     <label class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Original Filename Ref</label>
+                     <p class="text-indigo-300 font-mono text-xs break-all">{{ previewRecord.data.image_filename }}</p>
+                   </div>
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-gray-800 flex justify-between items-center">
+                  <span class="px-3 py-1.5 rounded-lg text-xs font-bold" :class="previewRecord.status === 'error' ? 'bg-red-900/40 text-red-400' : 'bg-green-900/40 text-green-400'">
+                    STATUS: {{ previewRecord.status.toUpperCase() }}
+                  </span>
+                  <button @click="closePreview" class="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition">
+                     Looks Good
+                  </button>
+                </div>
+             </div>
           </div>
        </div>
 

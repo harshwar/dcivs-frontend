@@ -24,8 +24,9 @@
     "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
     "jszip": "^3.10.1",
-    "three": "0.162.0",
+    "pdfjs-dist": "^5.4.624",
     "tesseract.js": "^5.1.1",
+    "three": "0.162.0",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.3",
     "vue-router": "^4.5.1"

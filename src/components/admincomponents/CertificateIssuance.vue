@@ -47,7 +47,13 @@
       <!-- FILE UPLOAD -->
       <div class="flex flex-col gap-1">
         <div class="flex justify-between items-center">
-          <span class="text-gray-400 text-sm">Achievement File (Image)</span>
+          <span class="text-gray-400 text-sm">Achievement File</span>
+          <!-- Format Standardization Loader -->
+          <span v-if="isConverting && !isScanning" class="text-indigo-400 text-xs flex items-center gap-1 animate-pulse">
+            <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+            Standardizing Format...
+          </span>
+          <!-- AI Scan Loader -->
           <span v-if="isScanning" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
             AI Scanning...
@@ -55,8 +61,8 @@
         </div>
         <FileUpload
           v-model="selectedFile"
-          accept="image/*"
-          hint="PNG, JPG, or WEBP"
+          accept="image/*,application/pdf"
+          hint="PNG, JPG, WEBP, HEIC, or PDF"
         />
       </div>
 
@@ -80,7 +86,7 @@
 
     <IssuanceConfirmationModal 
       :isOpen="showConfirmationModal" 
-      :file="selectedFile"
+      :file="standardizedImage || selectedFile"
       :student="selectedStudent"
       :isProcessing="isIssuing"
       :preVerifiedMatch="autoVerifiedMatch"
@@ -98,6 +104,7 @@ import FileUpload from '../ui/FileUpload.vue'
 import IssuanceConfirmationModal from './IssuanceConfirmationModal.vue'
 import { useToast } from '../../composables/useToast.js'
 import { API_BASE_URL } from '../../apiConfig'
+import { standardizeFileToPNG } from '../../utils/fileStandardizer.js'
 
 const toast = useToast()
 
@@ -110,8 +117,10 @@ const selectedStudentId = ref('') // ID of student to receive the certificate
 const title = ref('') // Certificate name
 const description = ref('') // Brief detail about the cert
 const department = ref('') // Academic department
-const selectedFile = ref(null) // The actual certificate image/file
+const selectedFile = ref(null) // The actual raw uploaded file
+const standardizedImage = ref(null) // The parsed clean PNG blob
 const isIssuing = ref(false) // Loading state for the submit button
+const isConverting = ref(false) // Loading state for file standardization
 const isScanning = ref(false) // Loading state for AI scanning
 const showConfirmationModal = ref(false) // Modal visibility
 
@@ -119,9 +128,27 @@ const autoVerifiedMatch = ref(null);
 const autoExtractedText = ref('');
 
 watch(selectedFile, async (newFile) => {
-  // If a file is uploaded but student is blank, it runs a 'blind scan' to auto-find them.
+  // Reset previous state
+  standardizedImage.value = null;
+  autoVerifiedMatch.value = null;
+  autoExtractedText.value = '';
+
   if (newFile) {
-    await scanCertificate(newFile);
+    try {
+      // 1. Convert any weird format / PDF into a squeaky clean PNG Blob
+      isConverting.value = true;
+      const cleanPngBlob = await standardizeFileToPNG(newFile);
+      standardizedImage.value = cleanPngBlob;
+    } catch (err) {
+      toast.error(err.message || 'Failed to parse file.');
+      selectedFile.value = null;
+      return;
+    } finally {
+      isConverting.value = false;
+    }
+
+    // 2. Pass the standard PNG right into the AI Scanner
+    await scanCertificate(standardizedImage.value);
   }
 });
 
