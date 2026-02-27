@@ -1,9 +1,9 @@
-import * as pdfjsLib from 'pdfjs-dist/build/pdf'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'
 
 // Configure the worker script for pdf.js to prevent lagging the main UI thread.
-// Using CDN for the worker to avoid complex Vite build configurations for this specific asset.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
+// Using explicit Vite URL import to bundle the local worker and avoid CDN CORS errors.
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 /**
  * Converts any compatible image file or the first page of a PDF into a standard PNG Blob.
  * 
