@@ -219,6 +219,24 @@ async function fetchDashboardData() {
   }
 }
 
+/**
+ * Handle student edits emitted from child components
+ */
+function handleStudentEdits(updatedStudent) {
+  const index = students.value.findIndex(s => s.id === updatedStudent.id)
+  if (index !== -1) {
+    // Merge the updated DB fields into the mapped UI structural fields
+    students.value[index] = {
+      ...students.value[index],
+      name: updatedStudent.full_name,
+      roll: updatedStudent.student_id_number,
+      course: updatedStudent.course_name,
+      year: updatedStudent.year,
+      // preserve other mapped fields like wallet which aren't editable
+    }
+  }
+}
+
 async function fetchLogs() {
   const token = localStorage.getItem('adminToken')
   if (!token) return
@@ -565,7 +583,7 @@ function setTheme(dark) {
 
         <!-- STUDENTS TAB -->
         <div v-if="activeTab === 'students'" class="animate-fade-in">
-          <StudentsList :students="students" />
+          <StudentsList :students="students" @edit-student="handleStudentEdits" />
         </div>
 
         <!-- APPROVAL TAB -->
