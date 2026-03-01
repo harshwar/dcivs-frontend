@@ -118,6 +118,20 @@ async function loadWallet(forceLocked = false) {
     encryptedJson.value = data.encrypted_json;
     walletAddress.value = data.public_address;
 
+    // Fetch the absolute latest user state from the backend to prevent onboarding loops
+    try {
+      const userRes = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: apiHeaders.value
+      });
+      if (userRes.ok) {
+        const freshUser = await userRes.json();
+        currentUser.value = freshUser.user;
+        localStorage.setItem('user', JSON.stringify(freshUser.user));
+      }
+    } catch (e) {
+      console.warn('Could not refresh user state', e);
+    }
+
     // Check if wallet needs onboarding (PIN not set = still encrypted with temp key)
     if (forceLocked) {
       status.value = 'locked';
