@@ -163,6 +163,7 @@ async function handleRecovery() {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ 
+        address: wallet.address,
         encryptedJson: newEncryptedJson,
         walletPinSet: true
       }),

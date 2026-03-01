@@ -262,7 +262,11 @@ async function completeOnboarding() {
     const res = await fetch(`${API_BASE_URL}/api/wallet/update`, {
       method: 'POST',
       headers: apiHeaders.value,
-      body: JSON.stringify({ encryptedJson: newEncryptedJson, walletPinSet: true }),
+      body: JSON.stringify({ 
+        address: wallet.address,
+        encryptedJson: newEncryptedJson, 
+        walletPinSet: true 
+      }),
     });
 
     if (!res.ok) {
