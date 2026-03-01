@@ -76,7 +76,7 @@ function logout() {
  * 1. Load User's Wallet
  * Checks if the user already has a wallet stored in the DB.
  */
-async function loadWallet() {
+async function loadWallet(forceLocked = false) {
   if (!token.value) {
     status.value = 'unauthorized';
     return;
@@ -119,7 +119,9 @@ async function loadWallet() {
     walletAddress.value = data.public_address;
 
     // Check if wallet needs onboarding (PIN not set = still encrypted with temp key)
-    if (!currentUser.value.wallet_pin_set) {
+    if (forceLocked) {
+      status.value = 'locked';
+    } else if (!currentUser.value.wallet_pin_set) {
       status.value = 'onboarding';
       onboardingStep.value = 1;
     } else {
@@ -286,7 +288,7 @@ async function completeOnboarding() {
 
     // Stay on wallet page and show the PIN prompt
     status.value = 'locked';
-    await loadWallet();
+    await loadWallet(true);
   } catch (err) {
     console.error('Onboarding save failed:', err);
     error.value = err.message;
