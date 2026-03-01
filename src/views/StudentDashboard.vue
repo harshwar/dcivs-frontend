@@ -161,7 +161,7 @@
                   class="flex-1 rounded-xl bg-gray-100 dark:bg-[#1b2127] border border-gray-200 dark:border-[#30363d] px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                   :class="{'text-center font-mono tracking-[0.35em]': student.wallet_pin_set}"
                   @keyup.enter="quickUnlock"
-                  @input="if(student.wallet_pin_set) quickPassword = quickPassword.replace(/\D/g,'')"
+                  @input="student.wallet_pin_set && (quickPassword = quickPassword.replace(/\D/g, ''))"
                 />
                 <button
                   @click="quickUnlock"
