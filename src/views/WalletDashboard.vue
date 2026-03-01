@@ -555,22 +555,25 @@ function onPinInput(field) {
             </p>
 
             <label class="flex flex-col w-full mb-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Wallet Password</span>
+              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Choose a 6-Digit PIN</span>
               <input
                 v-model="password"
-                type="password"
-                placeholder="Enter a strong password"
-                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal transition-all"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="● ● ● ● ● ●"
+                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-center font-mono tracking-[0.5em] text-xl transition-all"
+                @input="onPasswordInput"
               />
             </label>
 
             <button
               @click="createWallet"
-              :disabled="isBusy"
-              class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-sky-600 hover:bg-sky-700 text-white text-base font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30"
+              :disabled="isBusy || password.length !== 6"
+              class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-sky-600 hover:bg-sky-700 text-white text-base font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30"
             >
-              <span v-if="!isBusy">Create My Wallet</span>
-              <span v-else>Creating...</span>
+              <span v-if="!isBusy">Publish My Wallet ✅</span>
+              <span v-else>Encrypting...</span>
             </button>
           </div>
 
