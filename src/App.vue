@@ -16,13 +16,27 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onBeforeUnmount } from 'vue';
 import ToastNotification from './components/ui/ToastNotification.vue';
 import ConfirmDialog from './components/ui/ConfirmDialog.vue';
 import { initTheme } from './services/theme';
+import { API_BASE_URL } from './apiConfig';
+
+let keepAliveTimer = null;
+
+function pingBackend() {
+  fetch(`${API_BASE_URL}/api/ping`).catch(() => {});
+}
 
 onMounted(() => {
   initTheme();
+  // Keep-alive: ping backend every 5 minutes to prevent free-tier sleep
+  pingBackend();
+  keepAliveTimer = setInterval(pingBackend, 5 * 60 * 1000);
+});
+
+onBeforeUnmount(() => {
+  if (keepAliveTimer) clearInterval(keepAliveTimer);
 });
 </script>
 
