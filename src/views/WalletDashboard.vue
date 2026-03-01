@@ -391,9 +391,24 @@ async function copyVerificationLink(tokenId) {
   const link = `${window.location.origin}/verify/${tokenId}`;
   try {
     await navigator.clipboard.writeText(link);
-    toast.info('Inspection link copied!');
+    toast.success('Verification link copied to clipboard!');
   } catch {
     prompt('Copy this link:', link);
+  }
+}
+
+const canNativeShare = typeof navigator.share === 'function';
+
+async function nativeShareCertificate(tokenId, title) {
+  const url = `${window.location.origin}/verify/${tokenId}`;
+  try {
+    await navigator.share({
+      title: `Certificate: ${title || 'Achievement'}`,
+      text: 'View and verify my blockchain certificate:',
+      url
+    });
+  } catch (e) {
+    if (e.name !== 'AbortError') toast.error('Could not share.');
   }
 }
 
@@ -710,11 +725,37 @@ function onPasswordInput() {
                <p class="text-gray-500 dark:text-gray-400 text-sm mt-1 transition-colors">Issued to You on {{ selectedAsset.issueDate ? new Date(selectedAsset.issueDate).toLocaleDateString() : 'Unknown Date' }}</p>
             </div>
            
-           <div class="bg-gray-50 dark:bg-[#111418] rounded-xl p-4 mb-6 border border-gray-200 dark:border-[#283039] transition-colors">
+           <div class="bg-gray-50 dark:bg-[#111418] rounded-xl p-4 mb-4 border border-gray-200 dark:border-[#283039] transition-colors">
               <h4 class="text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2 transition-colors">Description</h4>
               <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed transition-colors">
                  {{ selectedAsset.description || 'No description provided for this certificate.' }}
               </p>
+           </div>
+
+           <!-- Certificate Timeline -->
+           <div class="mb-6">
+             <h4 class="text-gray-700 dark:text-gray-300 text-sm font-semibold mb-3 transition-colors">📅 Certificate History</h4>
+             <ol class="relative border-l-2 border-gray-200 dark:border-[#283039] ml-2 space-y-4">
+               <!-- Issued -->
+               <li class="ml-4">
+                 <span class="absolute -left-[9px] w-4 h-4 rounded-full bg-green-500 border-2 border-white dark:border-[#1b2127]"></span>
+                 <p class="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide">Issued</p>
+                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ selectedAsset.issueDate ? new Date(selectedAsset.issueDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Date unknown' }}</p>
+                 <p v-if="selectedAsset.transactionHash" class="font-mono text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">Tx: {{ selectedAsset.transactionHash?.slice(0,18) }}…</p>
+               </li>
+               <!-- Revoked -->
+               <li v-if="selectedAsset.isRevoked" class="ml-4">
+                 <span class="absolute -left-[9px] w-4 h-4 rounded-full bg-red-500 border-2 border-white dark:border-[#1b2127]"></span>
+                 <p class="text-xs font-bold text-red-500 dark:text-red-400 uppercase tracking-wide">Revoked by Institution</p>
+                 <p class="text-xs text-gray-500 dark:text-gray-400">Certificate is no longer valid for public verification.</p>
+               </li>
+               <!-- Current status (if not revoked) -->
+               <li v-else class="ml-4">
+                 <span class="absolute -left-[9px] w-4 h-4 rounded-full bg-sky-400 border-2 border-white dark:border-[#1b2127] animate-pulse"></span>
+                 <p class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">Currently Valid</p>
+                 <p class="text-xs text-gray-500 dark:text-gray-400">Verifiable on-chain at any time.</p>
+               </li>
+             </ol>
            </div>
 
            <!-- Action Buttons -->
@@ -791,6 +832,13 @@ function onPasswordInput() {
               class="w-full px-4 py-3 bg-sky-600 hover:bg-sky-700 dark:hover:bg-sky-500 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md"
             >
               📋 Copy Link
+            </button>
+            <button
+              v-if="canNativeShare"
+              @click="nativeShareCertificate(qrModal.tokenId, selectedAsset?.title)"
+              class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md"
+            >
+              📤 Share via...
             </button>
             <button 
               @click="qrModal.show = false"

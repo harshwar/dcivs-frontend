@@ -27,6 +27,13 @@
        <div class="text-sm text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
           Showing {{ filteredStudents.length }} students
        </div>
+       <button
+         @click="exportCSV"
+         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+         title="Download student list as CSV"
+       >
+         📥 Export CSV
+       </button>
     </div>
 
     <!-- Table -->
@@ -261,6 +268,25 @@ async function saveEdit() {
   } finally {
     isSavingEdit.value = false;
   }
+}
+function exportCSV() {
+  const headers = ['Name', 'Roll Number', 'Course', 'Year', 'Wallet Address']
+  const rows = props.students.map(s => [
+    `"${(s.name || '').replace(/"/g, '""')}"`,
+    `"${s.roll || ''}"`,
+    `"${s.course || ''}"`,
+    `"${s.year || ''}"`,
+    `"${s.wallet || ''}"`,
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `students_${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  toast.success(`Exported ${props.students.length} students to CSV`)
 }
 </script>
 

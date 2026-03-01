@@ -25,7 +25,9 @@
           class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-[#1b2127] hover:text-gray-900 dark:hover:text-white transition-all text-gray-500 dark:text-gray-400" 
           active-class="bg-gray-100 dark:bg-[#283039] text-gray-900 dark:text-white shadow-sm font-medium"
         >
-          <span>🎓</span> My Achievements
+          <span>🎓</span>
+          <span class="flex-1">My Achievements</span>
+          <span v-if="certCount > 0" class="text-[10px] font-bold bg-indigo-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-tight">{{ certCount }}</span>
         </router-link>
         <router-link 
           to="/student/settings" 
@@ -57,8 +59,9 @@
         <span class="text-xl group-active:scale-125 transition-transform">🏠</span>
         <span class="text-[10px] font-medium transition-colors">Home</span>
       </router-link>
-      <router-link to="/student/wallet" class="flex flex-col items-center gap-1 group" active-class="text-indigo-600 dark:text-indigo-400">
+      <router-link to="/student/wallet" class="flex flex-col items-center gap-1 group relative" active-class="text-indigo-600 dark:text-indigo-400">
         <span class="text-xl group-active:scale-125 transition-transform">🎓</span>
+        <span v-if="certCount > 0" class="absolute -top-1 -right-1 text-[9px] font-black bg-indigo-500 text-white rounded-full px-1 leading-tight min-w-[14px] text-center">{{ certCount }}</span>
         <span class="text-[10px] font-medium transition-colors">Wallet</span>
       </router-link>
       <router-link to="/student/settings" class="flex flex-col items-center gap-1 group" active-class="text-indigo-600 dark:text-indigo-400">
@@ -70,11 +73,29 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ParticleBackground2 from '../ParticleBackground2.vue'
 import AudioService from '../../services/audio'
+import { API_BASE_URL } from '../../apiConfig'
 
 const router = useRouter()
+const certCount = ref(0)
+
+onMounted(async () => {
+  // Fetch cert count for badge (unauthenticated-safe: returns 0 on fail)
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const res = await fetch(`${API_BASE_URL}/api/wallet/assets`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      certCount.value = (data.assets || []).length
+    }
+  } catch { /* non-critical */ }
+})
 
 function playClick() {
   AudioService.playClick()

@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue'
 import CustomSelect from '../ui/CustomSelect.vue'
 import FileUpload from '../ui/FileUpload.vue'
 import IssuanceConfirmationModal from './IssuanceConfirmationModal.vue'
@@ -358,6 +358,19 @@ function resetForm() {
 
 // Automatically populate the student dropdown when the form component is loaded
 onMounted(fetchStudents)
+
+// Unsaved-form protection
+const isDirty = computed(() => !!selectedStudentId.value || !!title.value || !!selectedFile.value)
+function handleBeforeUnload(e) {
+  if (isDirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+window.addEventListener('beforeunload', handleBeforeUnload)
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
 </script>
 
 
