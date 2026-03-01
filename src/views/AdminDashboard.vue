@@ -20,6 +20,7 @@ import StatusDonutChart from '../components/admincomponents/analytics/StatusDonu
 import StudentFunnelChart from '../components/admincomponents/analytics/StudentFunnelChart.vue'
 import HealthMonitor from '../components/admincomponents/HealthMonitor.vue'
 import ApproveStudents from '../components/admincomponents/ApproveStudents.vue'
+import PaginationControls from '../components/ui/PaginationControls.vue'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -88,6 +89,22 @@ const filteredLogs = computed(() => {
   if (logFilter.value === 'passkeys') return logs.value.filter(l => l.action.includes('PASSKEY'))
   if (logFilter.value === 'system') return logs.value.filter(l => !l.action.includes('LOGIN') && !l.action.includes('MINT') && !l.action.includes('PASSKEY') && !l.action.includes('REGISTER'))
   return logs.value
+})
+
+// Pagination for Logs
+const currentLogPage = ref(1)
+const logsPerPage = 5
+
+const totalLogPages = computed(() => Math.ceil(filteredLogs.value.length / logsPerPage))
+
+const paginatedLogs = computed(() => {
+  const start = (currentLogPage.value - 1) * logsPerPage
+  const end = start + logsPerPage
+  return filteredLogs.value.slice(start, end)
+})
+
+watch(logFilter, () => {
+  currentLogPage.value = 1
 })
 
 // QR Modal state
@@ -724,7 +741,7 @@ async function fetchPendingCount() {
                    </tr>
                  </thead>
                  <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
-                   <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-gray-50 dark:hover:bg-[#283039]/50 transition text-sm">
+                   <tr v-for="log in paginatedLogs" :key="log.id" class="hover:bg-gray-50 dark:hover:bg-[#283039]/50 transition text-sm">
                      <td class="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap" :title="new Date(log.timestamp.endsWith('Z') ? log.timestamp : log.timestamp + 'Z').toLocaleString()">
                        {{ relativeTime(log.timestamp) }}
                      </td>
@@ -754,6 +771,10 @@ async function fetchPendingCount() {
                  </tbody>
                </table>
              </div>
+             <PaginationControls 
+               v-model:currentPage="currentLogPage" 
+               :totalPages="totalLogPages" 
+             />
           </div>
         </div>
 

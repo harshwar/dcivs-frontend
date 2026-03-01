@@ -50,9 +50,9 @@
                    <th class="px-6 py-3 text-right">Actions</th>
                 </tr>
              </thead>
-             <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
+              <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
                 <tr 
-                  v-for="student in filteredStudents" 
+                  v-for="student in paginatedStudents" 
                   :key="student.id" 
                   class="hover:bg-gray-50 dark:hover:bg-[#1b2127]/50 transition cursor-pointer group"
                   @click="openDetails(student)"
@@ -92,6 +92,10 @@
              </tbody>
           </table>
        </div>
+       <PaginationControls 
+         v-model:currentPage="currentPage" 
+         :totalPages="totalPages" 
+       />
     </div>
 
     <!-- Edit Modal Overlay -->
@@ -159,8 +163,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import StudentDetailSlideOver from './StudentDetailSlideOver.vue';
+import PaginationControls from '../ui/PaginationControls.vue';
 import { API_BASE_URL } from '../../apiConfig';
 import { useToast } from '../../composables/useToast';
 
@@ -181,6 +186,10 @@ const filterCourse = ref('');
 const filterYear = ref('');
 const showSlideOver = ref(false);
 const selectedStudentId = ref(null);
+
+// Pagination State
+const currentPage = ref(1);
+const itemsPerPage = 5;
 
 // Edit Modal State
 const editingStudent = ref(null);
@@ -212,6 +221,19 @@ const filteredStudents = computed(() => {
       
       return matchesSearch && matchesCourse && matchesYear;
    });
+});
+
+const totalPages = computed(() => Math.ceil(filteredStudents.value.length / itemsPerPage));
+
+const paginatedStudents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filteredStudents.value.slice(start, end);
+});
+
+// Reset pagination when filters change
+watch([searchQuery, filterCourse, filterYear], () => {
+  currentPage.value = 1;
 });
 
 function openDetails(student) {

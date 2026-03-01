@@ -1,5 +1,5 @@
-<script setup>
 import { ref, onMounted, computed } from 'vue'
+import PaginationControls from '../ui/PaginationControls.vue'
 import { API_BASE_URL } from '../../apiConfig'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
@@ -14,15 +14,34 @@ const isProcessing = ref(null) // ID of student being processed
 const selectedIds = ref(new Set()) // For bulk approve
 const isBulkProcessing = ref(false)
 
+// Pagination State
+const currentPage = ref(1)
+const itemsPerPage = 5
+
+const totalPages = computed(() => Math.ceil(pendingStudents.value.length / itemsPerPage))
+
+const paginatedPendingStudents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return pendingStudents.value.slice(start, end)
+})
+
 const allSelected = computed(() =>
-  pendingStudents.value.length > 0 && selectedIds.value.size === pendingStudents.value.length
+  paginatedPendingStudents.value.length > 0 && 
+  paginatedPendingStudents.value.every(s => selectedIds.value.has(s.id))
 )
 
 function toggleSelectAll() {
   if (allSelected.value) {
-    selectedIds.value = new Set()
+    // If all on current page are selected, deselect them all
+    const newSelected = new Set(selectedIds.value)
+    paginatedPendingStudents.value.forEach(s => newSelected.delete(s.id))
+    selectedIds.value = newSelected
   } else {
-    selectedIds.value = new Set(pendingStudents.value.map(s => s.id))
+    // Select all on current page
+    const newSelected = new Set(selectedIds.value)
+    paginatedPendingStudents.value.forEach(s => newSelected.add(s.id))
+    selectedIds.value = newSelected
   }
 }
 
@@ -265,10 +284,13 @@ onMounted(fetchPending)
           :id="'select-all-students'"
         />
         <label for="select-all-students" class="text-sm text-gray-500 dark:text-gray-400 cursor-pointer select-none">
-          Select All ({{ pendingStudents.length }})
+          Select All on Page
         </label>
+        <div class="ml-auto text-sm text-gray-500">
+           Showing {{ paginatedPendingStudents.length }} of {{ pendingStudents.length }}
+        </div>
       </div>
-      <div v-for="student in pendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-indigo-500/30 transition-all" :class="{ 'border-indigo-500/40 bg-indigo-500/5': selectedIds.has(student.id) }">
+      <div v-for="student in paginatedPendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-indigo-500/30 transition-all" :class="{ 'border-indigo-500/40 bg-indigo-500/5': selectedIds.has(student.id) }">
         <div class="flex items-center gap-4">
           <!-- Checkbox -->
           <input
@@ -317,6 +339,13 @@ onMounted(fetchPending)
             <span v-if="isProcessing !== student.id" class="group-hover:translate-x-1 transition-transform">🚀</span>
           </button>
         </div>
+      </div>
+      
+      <div class="mt-4 bg-white/50 dark:bg-[#1b2127]/50 rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden">
+        <PaginationControls 
+          v-model:currentPage="currentPage" 
+          :totalPages="totalPages" 
+        />
       </div>
     </div>
     

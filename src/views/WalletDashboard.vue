@@ -7,6 +7,7 @@ import { Wallet } from 'ethers'; // Ethers.js for local wallet management
 import AudioService from '../services/audio';
 import { useToast } from '../composables/useToast.js';
 import { generateLinkedInCertUrl } from '../utils/linkedinUrlGenerator';
+import PaginationControls from '../components/ui/PaginationControls.vue';
 
 const toast = useToast();
 
@@ -26,6 +27,18 @@ const encryptedJson = ref(''); // The encrypted keystore string fetched from DB
 
 // Data Display
 const assets = ref([]); // Stores the list of NFTs owned by the user
+
+// Pagination State
+const currentPage = ref(1);
+const itemsPerPage = 5;
+
+const totalPages = computed(() => Math.ceil(assets.value.length / itemsPerPage));
+
+const paginatedAssets = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return assets.value.slice(start, end);
+});
 
 // --- Onboarding State ---
 const onboardingStep = ref(1); // 1=intro, 2=seed phrase reveal, 3=set PIN
@@ -772,7 +785,7 @@ function onPinInput(field) {
 
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div
-                  v-for="asset in assets"
+                  v-for="asset in paginatedAssets"
                   :key="asset.tokenId"
                   @click="openModal(asset)"
                   class="glass-card rounded-xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 group"
@@ -808,8 +821,15 @@ function onPinInput(field) {
                             ⚠️ Revoked
                          </span>
                     </div>
+                    </div>
                   </div>
                 </div>
+              </div>
+              <div class="mt-8">
+                <PaginationControls 
+                  v-model:currentPage="currentPage" 
+                  :totalPages="totalPages" 
+                />
               </div>
             </div>
           </div>

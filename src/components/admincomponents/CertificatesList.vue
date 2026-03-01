@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import PaginationControls from '../ui/PaginationControls.vue'
 
 const props = defineProps({
   certificates: {
@@ -13,6 +14,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['view', 'qr', 'toggle-revocation', 'update:searchQuery'])
+
+// Pagination State
+const currentPage = ref(1)
+const itemsPerPage = 5
 
 // Smart Search Logic (Internal to component)
 const filteredCertificates = computed(() => {
@@ -30,6 +35,18 @@ const filteredCertificates = computed(() => {
            tokenId.includes(query) ||
            date.includes(query)
   })
+})
+
+const totalPages = computed(() => Math.ceil(filteredCertificates.value.length / itemsPerPage))
+
+const paginatedCertificates = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredCertificates.value.slice(start, end)
+})
+
+watch(() => props.searchQuery, () => {
+  currentPage.value = 1
 })
 
 const localSearchQuery = computed({
@@ -70,7 +87,7 @@ function formatDate(dateStr) {
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
-          <tr v-for="cert in filteredCertificates" :key="cert.id" class="hover:bg-gray-50 dark:hover:bg-[#1b2127]/50 transition group">
+          <tr v-for="cert in paginatedCertificates" :key="cert.id" class="hover:bg-gray-50 dark:hover:bg-[#1b2127]/50 transition group">
             <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ cert.student?.full_name || cert.student_name || 'Unknown' }}</td>
             <td class="px-6 py-4 text-gray-600 dark:text-gray-300">{{ cert.title }}</td>
             <td class="px-6 py-4 font-mono text-gray-500 dark:text-gray-400">
@@ -134,5 +151,9 @@ function formatDate(dateStr) {
         </tbody>
       </table>
     </div>
+    <PaginationControls 
+      v-model:currentPage="currentPage" 
+      :totalPages="totalPages" 
+    />
   </div>
 </template>
