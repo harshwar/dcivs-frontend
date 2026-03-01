@@ -287,8 +287,8 @@ async function completeOnboarding() {
     confirmPin.value = '';
     password.value = '';
 
-    // Reload wallet into locked state
-    await loadWallet();
+    // Redirect to Student Dashboard (My Achievements)
+    router.push('/student/dashboard');
   } catch (err) {
     console.error('Onboarding save failed:', err);
     error.value = err.message;
