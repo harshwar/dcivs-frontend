@@ -24,6 +24,7 @@ const routes = [
   { path: '/wallet', redirect: '/student/wallet' },
   { path: '/settings', redirect: '/student/settings' },
   { path: '/passkey-setup', name: 'PasskeySetup', component: () => import('./views/PasskeySetup.vue') },
+  { path: '/forgot-pin', name: 'ForgotPin', component: () => import('./views/ForgotPin.vue') },
   { path: '/forgot-password', name: 'ForgotPassword', component: () => import('./views/ForgotPassword.vue') },
   { path: '/reset-password/:token', name: 'ResetPassword', component: () => import('./views/ResetPassword.vue') },
   { path: '/2fa-challenge', name: 'TwoFactorChallenge', component: () => import('./views/TwoFactorChallenge.vue') },

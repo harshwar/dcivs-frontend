@@ -15,7 +15,7 @@ const router = useRouter();
 import { API_BASE_URL } from '../apiConfig'; 
 
 // --- State Variables ---
-const status = ref('loading'); // Current State: 'loading' | 'no-wallet' | 'locked' | 'unlocked' | 'unauthorized'
+const status = ref('loading'); // Current State: 'loading' | 'no-wallet' | 'locked' | 'unlocked' | 'unauthorized' | 'onboarding'
 const isBusy = ref(false); // UI blocker for async operations (loading spinners)
 const error = ref(''); // Stores error messages
 
@@ -26,6 +26,13 @@ const encryptedJson = ref(''); // The encrypted keystore string fetched from DB
 
 // Data Display
 const assets = ref([]); // Stores the list of NFTs owned by the user
+
+// --- Onboarding State ---
+const onboardingStep = ref(1); // 1=intro, 2=seed phrase reveal, 3=set PIN
+const seedPhrase = ref('');
+const newPin = ref('');
+const confirmPin = ref('');
+const seedCopied = ref(false);
 
 // --- Auth Utilities ---
 const token = computed(() => localStorage.getItem('token') || ''); 
@@ -114,7 +121,14 @@ async function loadWallet() {
     const data = await res.json();
     encryptedJson.value = data.encrypted_json;
     walletAddress.value = data.public_address;
-    status.value = 'locked'; // Default to locked state for security
+
+    // Check if wallet needs onboarding (PIN not set = still encrypted with temp key)
+    if (!currentUser.value.wallet_pin_set) {
+      status.value = 'onboarding';
+      onboardingStep.value = 1;
+    } else {
+      status.value = 'locked'; // Normal PIN unlock
+    }
   } catch (err) {
     console.error('Error loading wallet:', err);
     error.value = err.message;
@@ -166,12 +180,12 @@ async function createWallet() {
 
 /**
  * 3. Unlock Wallet
- * Uses Ethers.js to decrypt the JSON with the user's password.
+ * Uses Ethers.js to decrypt the JSON with the user's 6-digit PIN.
  * This happens entirely in the browser (Client-Side Decryption).
  */
 async function unlockWallet() {
   if (!password.value) {
-    error.value = isPinEnabled.value ? 'Please enter your 6-digit PIN.' : 'Please enter your wallet password.';
+    error.value = 'Please enter your 6-digit PIN.';
     return;
   }
 
@@ -184,7 +198,7 @@ async function unlockWallet() {
   error.value = '';
 
   try {
-    // heavy computation: Decrypts the wallet
+    // heavy computation: Decrypts the wallet using PIN
     const wallet = await Wallet.fromEncryptedJson(encryptedJson.value, password.value);
 
     walletAddress.value = wallet.address;
@@ -194,10 +208,98 @@ async function unlockWallet() {
     await loadAssets();
   } catch (err) {
     console.error('Error unlocking wallet:', err);
-    error.value = 'Incorrect password or corrupted wallet.';
+    error.value = 'Incorrect PIN or corrupted wallet.';
   } finally {
     isBusy.value = false;
   }
+}
+
+/**
+ * Onboarding Step 2: Decrypt with temporary key and extract seed phrase
+ */
+async function startOnboarding() {
+  isBusy.value = true;
+  error.value = '';
+  try {
+    const wallet = await Wallet.fromEncryptedJson(encryptedJson.value, 'temporary-secure-wallet-key');
+    seedPhrase.value = wallet.mnemonic?.phrase || '';
+    if (!seedPhrase.value) {
+      error.value = 'Could not extract recovery phrase from this wallet.';
+      return;
+    }
+    walletAddress.value = wallet.address;
+    onboardingStep.value = 2;
+  } catch (err) {
+    console.error('Onboarding decrypt failed:', err);
+    error.value = 'Failed to decrypt wallet. Please contact support.';
+  } finally {
+    isBusy.value = false;
+  }
+}
+
+/**
+ * Onboarding Step 3: Re-encrypt with new PIN and save
+ */
+async function completeOnboarding() {
+  if (newPin.value.length !== 6 || !/^\d{6}$/.test(newPin.value)) {
+    error.value = 'PIN must be exactly 6 digits.';
+    return;
+  }
+  if (newPin.value !== confirmPin.value) {
+    error.value = 'PINs do not match.';
+    return;
+  }
+
+  isBusy.value = true;
+  error.value = '';
+  try {
+    // Decrypt with temp key
+    const wallet = await Wallet.fromEncryptedJson(encryptedJson.value, 'temporary-secure-wallet-key');
+    // Re-encrypt with user's chosen PIN
+    const newEncryptedJson = await wallet.encrypt(newPin.value);
+
+    // Save to backend
+    const res = await fetch(`${API_BASE_URL}/api/wallet/update`, {
+      method: 'POST',
+      headers: apiHeaders.value,
+      body: JSON.stringify({ encryptedJson: newEncryptedJson, walletPinSet: true }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to save wallet.');
+    }
+
+    // Update local user object
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    user.wallet_pin_set = true;
+    localStorage.setItem('user', JSON.stringify(user));
+
+    toast.success('Wallet secured with your PIN! 🎉');
+
+    // Clean up onboarding state
+    seedPhrase.value = '';
+    newPin.value = '';
+    confirmPin.value = '';
+    password.value = '';
+
+    // Reload wallet into locked state
+    await loadWallet();
+  } catch (err) {
+    console.error('Onboarding save failed:', err);
+    error.value = err.message;
+  } finally {
+    isBusy.value = false;
+  }
+}
+
+function copySeedPhrase() {
+  navigator.clipboard.writeText(seedPhrase.value).then(() => {
+    seedCopied.value = true;
+    toast.success('Recovery phrase copied!');
+  }).catch(() => {
+    toast.error('Failed to copy. Please select and copy manually.');
+  });
 }
 
 /**
@@ -284,72 +386,8 @@ function closeModal() {
   selectedAsset.value = null;
 }
 
-// --- Wallet Backup & Recovery (Idea 4) ---
-const showBackup = ref(false);
-const revealMnemonic = ref(false);
-const backupPhrase = ref('');
-const recoveryMode = ref(false);
-const recoveryPhrase = ref('');
-
-async function startBackup() {
-  if (!password.value) {
-    toast.warning('Please enter your password in the unlock field first.');
-    return;
-  }
-  isBusy.value = true;
-  try {
-    const wallet = await Wallet.fromEncryptedJson(encryptedJson.value, password.value);
-    // In ethers v6, mnemonic is an object or null
-    backupPhrase.value = wallet.mnemonic?.phrase || "No mnemonic found for this wallet (Legacy).";
-    showBackup.value = true;
-  } catch (err) {
-    toast.error('Error revealing phrase: ' + err.message);
-  } finally {
-    isBusy.value = false;
-  }
-}
-
-async function handleRecovery() {
-  if (!recoveryPhrase.value || !password.value) {
-    error.value = "Recovery phrase and a new password are required.";
-    return;
-  }
-  
-  isBusy.value = true;
-  error.value = '';
-  try {
-    // 1. Recreate wallet from phrase
-    const wallet = Wallet.fromPhrase(recoveryPhrase.value.trim());
-    
-    // 2. Encrypt with new password
-    const newEncryptedJson = await wallet.encrypt(password.value);
-    
-    // 3. Save to backend (upsert) using our new import endpoint
-    const res = await fetch(`${API_BASE_URL}/api/wallet/import`, {
-      method: 'POST',
-      headers: apiHeaders.value,
-      body: JSON.stringify({ 
-        address: wallet.address,
-        encryptedJson: newEncryptedJson
-      }),
-    });
-    
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to import wallet.");
-    }
-
-    toast.success('Wallet recovered successfully! Please log in with your new password.');
-    recoveryMode.value = false;
-    recoveryPhrase.value = '';
-    await loadWallet();
-
-  } catch (err) {
-    error.value = "Recovery failed: " + err.message;
-  } finally {
-    isBusy.value = false;
-  }
-}
+// Backup/Recovery removed — seed phrase is shown during onboarding only.
+// Forgot PIN recovery is handled by ForgotPin.vue.
 
 function openVerification(hash) {
   if (!hash) return;
@@ -428,14 +466,21 @@ function getIpfsUrl(cid) {
 }
 
 function onPasswordInput() {
-  if (isPinEnabled.value) {
-    const prevLen = password.value.length;
-    password.value = password.value.replace(/\D/g, '');
-    
-    // Vibrate on new digit entry for a premium mobile feel
-    if (password.value.length > prevLen || (password.value.length === 6 && prevLen === 6)) {
-      if (navigator.vibrate) navigator.vibrate(10);
-    }
+  // PIN is always numeric
+  const prevLen = password.value.length;
+  password.value = password.value.replace(/\D/g, '');
+  
+  // Vibrate on new digit entry for a premium mobile feel
+  if (password.value.length > prevLen || (password.value.length === 6 && prevLen === 6)) {
+    if (navigator.vibrate) navigator.vibrate(10);
+  }
+}
+
+function onPinInput(field) {
+  if (field === 'new') {
+    newPin.value = newPin.value.replace(/\D/g, '');
+  } else {
+    confirmPin.value = confirmPin.value.replace(/\D/g, '');
   }
 }
 </script>
@@ -511,12 +556,132 @@ function onPasswordInput() {
             </button>
           </div>
 
-          <div v-else-if="status === 'locked' && !recoveryMode" class="max-w-md mx-auto glass-panel rounded-2xl p-8 mt-10 shadow-xl transition-all duration-300">
+          <!-- ONBOARDING MODE: First-time wallet setup -->
+          <div v-else-if="status === 'onboarding'" class="max-w-lg mx-auto glass-panel rounded-2xl p-8 mt-10 shadow-xl transition-all duration-300 animate-fadeIn">
+
+            <!-- Step 1: Introduction -->
+            <template v-if="onboardingStep === 1">
+              <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-3xl mx-auto mb-4">🔐</div>
+                <h2 class="text-gray-900 dark:text-white tracking-tight text-3xl font-bold transition-colors">Secure Your Wallet</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-3 transition-colors">
+                  Your blockchain wallet has been created! Let's secure it with a <strong>6-digit PIN</strong> and save your <strong>recovery phrase</strong>.
+                </p>
+              </div>
+              <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4 mb-6 text-sm text-amber-800 dark:text-amber-200">
+                <strong>⚠️ Important:</strong> This is a one-time setup. You will see your 12-word recovery phrase on the next screen. Save it somewhere safe — it's the only way to recover your wallet if you forget your PIN.
+              </div>
+              <button
+                @click="startOnboarding"
+                :disabled="isBusy"
+                class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-base font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+              >
+                <span v-if="!isBusy">Continue →</span>
+                <span v-else>Decrypting wallet...</span>
+              </button>
+            </template>
+
+            <!-- Step 2: Show Seed Phrase -->
+            <template v-else-if="onboardingStep === 2">
+              <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center text-3xl mx-auto mb-4">🌱</div>
+                <h2 class="text-gray-900 dark:text-white tracking-tight text-2xl font-bold transition-colors">Your Recovery Phrase</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm transition-colors">
+                  Write down these 12 words in order. This is the <strong>only</strong> way to recover your wallet.
+                </p>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] rounded-xl p-4 mb-4">
+                <div class="grid grid-cols-3 gap-2">
+                  <div
+                    v-for="(word, i) in seedPhrase.split(' ')"
+                    :key="i"
+                    class="flex items-center gap-2 bg-white dark:bg-[#0d1117] rounded-lg px-3 py-2 border border-gray-100 dark:border-[#21262d]"
+                  >
+                    <span class="text-xs text-gray-400 font-mono w-4 text-right">{{ i + 1 }}</span>
+                    <span class="text-sm font-mono text-gray-900 dark:text-white font-medium">{{ word }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                @click="copySeedPhrase"
+                class="w-full mb-4 py-2 rounded-xl border border-gray-300 dark:border-[#30363d] text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#21262d] transition-colors"
+              >
+                {{ seedCopied ? '✅ Copied!' : '📋 Copy to Clipboard' }}
+              </button>
+
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-xl p-3 mb-6 text-xs text-red-700 dark:text-red-300">
+                <strong>🚨 Never share this phrase.</strong> Anyone with these words can access your wallet and all your certificates.
+              </div>
+
+              <button
+                @click="onboardingStep = 3"
+                :disabled="!seedCopied"
+                class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-base font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+              >
+                I've Saved My Phrase → Set PIN
+              </button>
+            </template>
+
+            <!-- Step 3: Set PIN -->
+            <template v-else-if="onboardingStep === 3">
+              <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-sky-500/20 flex items-center justify-center text-3xl mx-auto mb-4">🔢</div>
+                <h2 class="text-gray-900 dark:text-white tracking-tight text-2xl font-bold transition-colors">Set Your Wallet PIN</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm transition-colors">
+                  Choose a 6-digit PIN to unlock your wallet quickly.
+                </p>
+              </div>
+
+              <label class="flex flex-col w-full mb-4">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">New PIN</span>
+                <input
+                  v-model="newPin"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="● ● ● ● ● ●"
+                  class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-center font-mono tracking-[0.5em] text-xl transition-all"
+                  @input="onPinInput('new')"
+                />
+              </label>
+
+              <label class="flex flex-col w-full mb-6">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Confirm PIN</span>
+                <input
+                  v-model="confirmPin"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="● ● ● ● ● ●"
+                  class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-center font-mono tracking-[0.5em] text-xl transition-all"
+                  @input="onPinInput('confirm')"
+                />
+              </label>
+
+              <button
+                @click="completeOnboarding"
+                :disabled="isBusy || newPin.length !== 6 || confirmPin.length !== 6"
+                class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-green-600 hover:bg-green-500 text-white text-base font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-green-500/20"
+              >
+                <span v-if="!isBusy">Secure My Wallet ✅</span>
+                <span v-else>Encrypting...</span>
+              </button>
+
+              <div class="text-center mt-4">
+                <button @click="onboardingStep = 2" class="text-gray-500 hover:underline text-sm font-medium">← Back to Recovery Phrase</button>
+              </div>
+            </template>
+          </div>
+
+          <!-- LOCKED STATE: PIN Unlock -->
+          <div v-else-if="status === 'locked'" class="max-w-md mx-auto glass-panel rounded-2xl p-8 mt-10 shadow-xl transition-all duration-300">
             <h2 class="text-gray-900 dark:text-white tracking-tight text-3xl font-bold text-center mb-4 transition-colors">
               Welcome Back
             </h2>
             <p class="text-gray-500 dark:text-gray-400 text-center mb-6 transition-colors">
-              Enter your {{ isPinEnabled ? '6-digit Wallet PIN' : 'wallet password' }} to unlock your achievements.
+              Enter your 6-digit Wallet PIN to unlock your achievements.
             </p>
 
             <div class="mb-4 text-center text-sm text-gray-500 dark:text-gray-400 transition-colors">
@@ -525,17 +690,14 @@ function onPasswordInput() {
             </div>
 
             <label class="flex flex-col w-full mb-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">
-                {{ isPinEnabled ? 'Wallet PIN' : 'Wallet Password' }}
-              </span>
+              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Wallet PIN</span>
               <input
                 v-model="password"
-                :type="isPinEnabled ? 'text' : 'password'"
-                :inputmode="isPinEnabled ? 'numeric' : 'text'"
-                :maxlength="isPinEnabled ? 6 : undefined"
-                :placeholder="isPinEnabled ? 'Enter 6-digit PIN' : 'Enter your password'"
-                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal transition-all"
-                :class="{'text-center font-mono tracking-[0.5em] text-xl': isPinEnabled}"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="Enter 6-digit PIN"
+                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-center font-mono tracking-[0.5em] text-xl transition-all"
                 @input="onPasswordInput"
               />
             </label>
@@ -550,51 +712,10 @@ function onPasswordInput() {
             </button>
 
             <div class="text-center">
-              <button @click="recoveryMode = true" class="text-sky-600 hover:underline text-sm font-medium">Lost password? Recover with Seed Phrase</button>
+              <router-link to="/forgot-pin" class="text-sky-600 hover:underline text-sm font-medium">Forgot PIN?</router-link>
             </div>
           </div>
 
-          <!-- RECOVERY MODE UI -->
-          <div v-else-if="recoveryMode" class="max-w-md mx-auto glass-panel rounded-2xl p-8 mt-10 shadow-xl transition-all duration-300 animate-fadeIn">
-            <h2 class="text-gray-900 dark:text-white tracking-tight text-3xl font-bold text-center mb-4 transition-colors">
-              Recover Wallet
-            </h2>
-            <p class="text-gray-500 dark:text-gray-400 text-center mb-6 transition-colors">
-              Enter your 12-word recovery phrase and a new password to restore your digital identity.
-            </p>
-
-            <label class="flex flex-col w-full mb-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Recovery Phrase (12 Words)</span>
-              <textarea
-                v-model="recoveryPhrase"
-                placeholder="word1 word2 ... word12"
-                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-24 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 py-2 text-base font-normal transition-all"
-              ></textarea>
-            </label>
-
-            <label class="flex flex-col w-full mb-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">New Wallet Password</span>
-              <input
-                v-model="password"
-                type="password"
-                placeholder="Enter new password"
-                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal transition-all"
-              />
-            </label>
-
-            <button
-              @click="handleRecovery"
-              :disabled="isBusy"
-              class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-sky-600 hover:bg-sky-700 text-white text-base font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30 mb-4"
-            >
-              <span v-if="!isBusy">Restore Wallet</span>
-              <span v-else>Restoring...</span>
-            </button>
-
-            <div class="text-center">
-              <button @click="recoveryMode = false" class="text-gray-500 hover:underline text-sm font-medium">Back to Login</button>
-            </div>
-          </div>
 
           <div v-else-if="status === 'unlocked'" class="max-w-7xl mx-auto">
             <div class="flex items-center justify-between mb-6 glass-panel p-4 rounded-xl shadow-sm dark:shadow-none transition-all duration-300">

@@ -375,6 +375,40 @@ async function changeAdminPassword() {
   }
 }
 
+const reissueState = ref({ loading: false, error: '', success: '' })
+
+async function reissueAllWallets() {
+  reissueState.value.error = ''
+  reissueState.value.success = ''
+
+  if (!window.confirm('WARNING: This will reissue wallets for test accounts and send emails. Proceed?')) {
+    return
+  }
+  
+  reissueState.value.loading = true
+
+  try {
+    const token = localStorage.getItem('adminToken')
+    const res = await fetch(`${API_BASE}/admin/reissue-wallets`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to reissue wallets')
+    
+    reissueState.value.success = data.message || 'Wallets reissued successfully'
+    toast.success(data.message || 'Wallets reissued successfully')
+  } catch (e) {
+    reissueState.value.error = e.message
+    toast.error(e.message)
+  } finally {
+    reissueState.value.loading = false
+  }
+}
+
 /**
  * logout:
  * Clears administrative session and redirects to the public-facing admin login page.
@@ -773,6 +807,27 @@ async function fetchPendingCount() {
                  {{ settingsState.loading ? 'Updating...' : 'Update Password' }}
                </button>
              </form>
+             
+             <!-- Wallet Migration (Danger Zone) -->
+             <div class="mt-8 pt-6 border-t border-gray-200 dark:border-[#30363d]">
+               <h4 class="text-xs font-bold text-red-500 uppercase mb-4">Danger Zone</h4>
+               <div class="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/30 rounded-xl">
+                 <h5 class="font-bold text-red-900 dark:text-red-400 mb-2">Reissue Student Wallets (Test Only)</h5>
+                 <p class="text-xs text-red-700 dark:text-red-300 mb-4">
+                   Generates new wallets encrypted with a temporary key for test accounts and sends upgrade emails.
+                 </p>
+                 <button 
+                   @click="reissueAllWallets" 
+                   :disabled="reissueState.loading"
+                   class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition disabled:opacity-50"
+                 >
+                   {{ reissueState.loading ? 'Reissuing...' : 'Reissue Test Wallets' }}
+                 </button>
+                 <p v-if="reissueState.error" class="text-red-500 text-xs mt-2">{{ reissueState.error }}</p>
+                 <p v-if="reissueState.success" class="text-green-500 text-xs mt-2">{{ reissueState.success }}</p>
+               </div>
+             </div>
+
            </div>
         </div>
 

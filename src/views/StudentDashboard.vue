@@ -136,7 +136,22 @@
             </button>
           </div>
 
-          <!-- Wallet exists — locked state: show quick unlock -->
+          <!-- Wallet exists - locked state but needs onboarding (PIN not set) -->
+          <div v-else-if="!student.wallet_pin_set" class="space-y-3">
+            <div class="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0 animate-pulse"></div>
+              <p class="text-amber-700 dark:text-amber-400 text-sm font-semibold">Action Required</p>
+            </div>
+            <div class="p-4 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-[#283039] text-center shadow-inner">
+              <span class="text-3xl block mb-2">🔐</span>
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-4 font-medium leading-relaxed">Please secure your wallet with a 6-digit PIN to enable Quick Unlock.</p>
+              <button @click="$router.push('/student/wallet')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 text-sm">
+                Secure Wallet Now →
+              </button>
+            </div>
+          </div>
+
+          <!-- Wallet exists — locked state: show PIN quick unlock -->
           <div v-else class="space-y-3">
             <div class="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl">
               <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></div>
@@ -146,26 +161,25 @@
               <p class="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wider">Public Address</p>
               <p class="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{{ student.ethereum_address }}</p>
             </div>
-            <!-- Quick PIN/password unlock -->
+            <!-- Quick PIN unlock -->
             <div class="space-y-2">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {{ student.wallet_pin_set ? 'Quick Unlock (6-digit PIN)' : 'Quick Unlock (Password)' }}
+                Quick Unlock (6-digit PIN)
               </label>
               <div class="flex gap-2">
                 <input
                   v-model="quickPassword"
-                  :type="student.wallet_pin_set ? 'text' : 'password'"
-                  :inputmode="student.wallet_pin_set ? 'numeric' : 'text'"
-                  :maxlength="student.wallet_pin_set ? 6 : undefined"
-                  :placeholder="student.wallet_pin_set ? '6-digit PIN' : 'Wallet password'"
-                  class="flex-1 rounded-xl bg-gray-100 dark:bg-[#1b2127] border border-gray-200 dark:border-[#30363d] px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                  :class="{'text-center font-mono tracking-[0.35em]': student.wallet_pin_set}"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="6-digit PIN"
+                  class="flex-1 rounded-xl bg-gray-100 dark:bg-[#1b2127] border border-gray-200 dark:border-[#30363d] px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-center font-mono tracking-[0.35em]"
                   @keyup.enter="quickUnlock"
-                  @input="student.wallet_pin_set && (quickPassword = quickPassword.replace(/\D/g, ''))"
+                  @input="quickPassword = quickPassword.replace(/\D/g, '')"
                 />
                 <button
                   @click="quickUnlock"
-                  :disabled="walletBusy || !quickPassword"
+                  :disabled="walletBusy || quickPassword.length !== 6"
                   class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 text-sm disabled:opacity-50 shrink-0"
                 >
                   <span v-if="walletBusy" class="animate-spin inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>

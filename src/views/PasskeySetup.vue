@@ -9,7 +9,7 @@
     <div class="relative z-10 w-full max-w-lg mx-4">
       
       <!-- Success State -->
-      <div v-if="setupComplete && !showPinSetup" class="text-center space-y-6 animate-fade-in">
+      <div v-if="setupComplete" class="text-center space-y-6 animate-fade-in">
         <div class="w-24 h-24 mx-auto rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
           <span class="text-5xl">✓</span>
         </div>
@@ -19,72 +19,10 @@
           <strong>Next: Secure your wallet for passwordless access.</strong>
         </p>
         <button
-          @click="showPinSetup = true"
+          @click="router.push('/student/wallet')"
           class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-indigo-500/20"
         >
           Secure Wallet with PIN →
-        </button>
-      </div>
-
-      <!-- Wallet PIN Setup (Conditional) -->
-      <div v-else-if="showPinSetup" class="space-y-8 animate-fade-in">
-        <div class="text-center space-y-3">
-          <div class="w-20 h-20 mx-auto rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center mb-6">
-            <span class="text-4xl">🔢</span>
-          </div>
-          <h1 class="text-3xl font-bold text-white">Secure Your Wallet</h1>
-          <p class="text-gray-400 max-w-sm mx-auto">
-            Since you are now using biometrics, you need a 6-digit PIN to open your wallet.
-          </p>
-        </div>
-
-        <div class="bg-[#161b22] border border-[#30363d] rounded-2xl p-6 space-y-6">
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Account Password</label>
-            <input
-              v-model="password"
-              type="password"
-              class="w-full bg-[#0d1117] border border-[#30363d] rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-              placeholder="To confirm it's you"
-            />
-            <p class="text-[10px] text-gray-500 mt-2">Required to move your wallet to PIN protection.</p>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">New 6-Digit PIN</label>
-            <input
-              v-model="pin"
-              type="text"
-              inputmode="numeric"
-              maxlength="6"
-              class="w-full bg-[#0d1117] border border-[#30363d] rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-              placeholder="000000"
-              @input="onPinInput"
-            />
-          </div>
-        </div>
-
-        <div v-if="pinError" class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
-          {{ pinError }}
-        </div>
-
-        <button
-          @click="handleSavePin"
-          :disabled="isPinSaving || !password || pin.length !== 6"
-          class="w-full py-3.5 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
-        >
-          <svg v-if="isPinSaving" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          {{ isPinSaving ? 'Securing Wallet...' : 'Confirm PIN & Finish' }}
-        </button>
-
-        <button
-          @click="goToDashboard"
-          class="w-full py-2 text-gray-500 hover:text-gray-400 text-xs transition-colors"
-        >
-          I'll do this later (Risky)
         </button>
       </div>
 
@@ -194,13 +132,6 @@ const isLoading = ref(false)
 const error = ref('')
 const setupComplete = ref(false)
 
-// PIN Setup states
-const showPinSetup = ref(false)
-const password = ref('')
-const pin = ref('')
-const isPinSaving = ref(false)
-const pinError = ref('')
-
 onMounted(() => {
   passkeySupported.value = isPasskeySupported()
   
@@ -213,9 +144,10 @@ onMounted(() => {
     return
   }
 
-  // If user already has a passkey but NO pin, jump straight to PIN setup
+  // If user already has a passkey but NO pin, jump straight to wallet onboarding
   if (user.has_passkeys && !user.wallet_pin_set) {
-    showPinSetup.value = true
+    router.replace('/student/wallet')
+    return
   }
 })
 
@@ -235,91 +167,6 @@ async function handleSetupPasskey() {
     }
   } finally {
     isLoading.value = false
-  }
-}
-
-async function handleSavePin() {
-  console.log('[PIN Setup] Starting PIN save process...');
-  isPinSaving.value = true
-  pinError.value = ''
-
-  try {
-    const token = localStorage.getItem('token')
-    
-    // 1. Fetch current encrypted wallet
-    console.log('[PIN Setup] Fetching current wallet...');
-    const walletRes = await fetch(`${API_BASE_URL}/api/wallet/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    if (!walletRes.ok) {
-      const errorData = await walletRes.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch wallet info (Status: ${walletRes.status})`);
-    }
-    const walletData = await walletRes.json()
-    console.log('[PIN Setup] Wallet data retrieved.');
-    
-    // 2. Decrypt with Password
-    console.log('[PIN Setup] Decrypting wallet with password...');
-    let wallet;
-    try {
-      wallet = await Wallet.fromEncryptedJson(walletData.encrypted_json, password.value)
-      console.log('[PIN Setup] Decryption successful.');
-    } catch (e) {
-      console.error('[PIN Setup] Decryption failed:', e);
-      throw new Error('Incorrect account password. Please try again.');
-    }
-
-    // 3. Re-encrypt with PIN
-    console.log('[PIN Setup] Re-encrypting wallet with PIN...');
-    const newEncryptedJson = await wallet.encrypt(pin.value)
-    console.log('[PIN Setup] Re-encryption successful.');
-
-    // 4. Update on server
-    console.log('[PIN Setup] Sending updated wallet to server...');
-    const updateRes = await fetch(`${API_BASE_URL}/api/wallet/update`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        address: wallet.address,
-        encryptedJson: newEncryptedJson
-      })
-    })
-
-    if (!updateRes.ok) {
-      const errData = await updateRes.json().catch(() => ({}));
-      console.error('[PIN Setup] Server update failed:', errData);
-      throw new Error(errData.error || 'Failed to update wallet security on server');
-    }
-
-    // 5. Update local user state
-    console.log('[PIN Setup] Updating local user state...');
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    user.wallet_pin_set = true
-    localStorage.setItem('user', JSON.stringify(user))
-
-    toast.success('Wallet secured with PIN!')
-    console.log('[PIN Setup] Process complete. Redirecting...');
-    setTimeout(() => goToDashboard(), 1000)
-
-  } catch (err) {
-    console.error('[PIN Setup] Overall failure:', err);
-    pinError.value = err.message
-  } finally {
-    isPinSaving.value = false
-  }
-}
-
-function onPinInput() {
-  const prevLen = pin.value.length;
-  pin.value = pin.value.replace(/\D/g, '');
-  
-  // Vibrate on input for premium mobile feel
-  if (pin.value.length > prevLen || (pin.value.length === 6 && prevLen === 6)) {
-    if (navigator.vibrate) navigator.vibrate(10);
   }
 }
 
