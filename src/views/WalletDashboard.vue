@@ -821,7 +821,6 @@ function onPinInput(field) {
                             ⚠️ Revoked
                          </span>
                     </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -831,7 +830,6 @@ function onPinInput(field) {
                   :totalPages="totalPages" 
                 />
               </div>
-            </div>
           </div>
           
       </div>
