@@ -381,7 +381,7 @@ async function reissueAllWallets() {
   reissueState.value.error = ''
   reissueState.value.success = ''
 
-  if (!window.confirm('WARNING: This will reissue wallets for test accounts and send emails. Proceed?')) {
+  if (!window.confirm('WARNING: This will reissue wallets for all accounts and send emails. Proceed?')) {
     return
   }
   
