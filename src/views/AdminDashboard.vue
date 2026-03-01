@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue' // Vue composition API utilities
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue' // Vue composition API utilities
 import { useRouter } from 'vue-router' // Router for page navigation
 import CertificateIssuance from '../components/admincomponents/CertificateIssuance.vue' // Custom component for certificate issuance form
 import BatchOperations from '../components/admincomponents/BatchOperations.vue' // Batch CSV operations
