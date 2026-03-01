@@ -583,35 +583,6 @@ async function fetchPendingCount() {
         
         <!-- DASHBOARD TAB -->
         <div v-if="activeTab === 'dashboard'" class="space-y-8 animate-fade-in">
-          <!-- Compliance & Exports -->
-          <div class="flex items-center justify-between glass-panel p-4 rounded-xl border border-blue-200/50 dark:border-indigo-500/20">
-             <div class="flex items-center gap-3">
-               <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                 </svg>
-               </div>
-               <div>
-                 <h4 class="font-bold text-gray-900 dark:text-white">Audit & Compliance</h4>
-                 <p class="text-xs text-gray-500">Download cryptographically signed records</p>
-               </div>
-             </div>
-             <div class="flex gap-2">
-               <button 
-                 @click="exportToCSV(certificates)" 
-                 class="px-4 py-2 bg-white dark:bg-[#283039] border border-gray-200 dark:border-[#3b4754] text-gray-700 dark:text-gray-200 text-sm font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
-               >
-                 <span>📊</span> CSV
-               </button>
-               <button 
-                 @click="exportToJSON(certificates)" 
-                 class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-               >
-                 <span>📦</span> JSON
-               </button>
-             </div>
-          </div>
-
           <!-- ANALYTICS GRID -->
           <div v-if="analytics" class="space-y-6">
             <!-- Row 1: Key Stats -->
