@@ -65,11 +65,11 @@ onMounted(verifyToken)
 
       <div v-if="status === 'success'" class="space-y-4">
         <div class="p-4 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-300 text-sm">
-          💡 Our administrators have been notified. Once they approve your identity, you'll receive an activation email!
+          💡 Our administrators have been notified and will review your identity. You will receive an activation email once your account is approved.
         </div>
-        <button @click="router.push('/login')" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/20">
-          Return to Login
-        </button>
+        <div class="p-4 bg-green-500/10 rounded-xl border border-green-500/20 text-green-300 text-sm font-medium">
+          ✅ No further action is needed from your side. You can close this page.
+        </div>
       </div>
 
       <div v-else-if="status === 'error'" class="space-y-4">

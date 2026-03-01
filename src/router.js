@@ -41,6 +41,7 @@ const routes = [
   { path: '/verify', name: 'VerifySearch', component: () => import('./views/VerifyCertificate.vue') },
   { path: '/verify/:tokenId', name: 'VerifyCertificate', component: () => import('./views/VerifyCertificate.vue') },
   { path: '/verify-email', name: 'VerifyEmail', component: () => import('./views/VerifyEmail.vue') },
+  { path: '/account-status', name: 'AccountStatus', component: () => import('./views/AccountStatus.vue') },
   { path: '/inspect', redirect: '/verify' },
   { path: '/inspect/:tokenId', redirect: to => `/verify/${to.params.tokenId}` },
   

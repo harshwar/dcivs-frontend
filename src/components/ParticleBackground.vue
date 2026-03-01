@@ -249,17 +249,17 @@ class Particle {
         let tx = this.anchorX;
         let ty = this.anchorY;
 
-        // MOUSE MAGNETISM
+        // MOUSE REPULSION (repel only — no attraction to prevent clustering)
         if (mouse.x && mouse.y) {
            const dx = mouse.x - tx;
            const dy = mouse.y - ty;
            const dist = Math.sqrt(dx*dx + dy*dy);
            
-           if (dist < 120) {
+           if (dist < 120 && dist > 0) {
               const force = (120 - dist) / 120;
-              // Attract slightly towards mouse (Bulge effect)
-              tx += dx * force * 0.3; 
-              ty += dy * force * 0.3;
+              // Repel away from mouse
+              tx -= dx * force * 0.2; 
+              ty -= dy * force * 0.2;
            }
         }
         
