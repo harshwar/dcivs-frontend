@@ -245,7 +245,7 @@ async function handleLogin() {
     } else {
       // Handle pending/rejected states — redirect to dedicated status page
       if (res.status === 403 && data.code) {
-        router.push(`/account-status?status=${data.code}`)
+        router.push(`/account-status?status=${data.code}&email=${encodeURIComponent(form.email)}`)
         return
       }
 

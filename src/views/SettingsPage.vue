@@ -69,7 +69,26 @@
                </div>
                <div class="p-4 bg-gray-50 dark:bg-[#0d1117] rounded-xl border dark:border-[#30363d] border-gray-200">
                  <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Wallet Address</label>
-                 <p class="font-mono text-sm mt-1 truncate" :title="user?.ethereum_address">{{ user?.ethereum_address || 'Not Connected' }}</p>
+                 <div class="flex items-center gap-2 mt-1">
+                   <p class="font-mono text-sm truncate flex-1" :title="user?.ethereum_address">{{ user?.ethereum_address || 'Not Connected' }}</p>
+                   <button
+                     v-if="user?.ethereum_address"
+                     @click="copyWalletAddress"
+                     class="shrink-0 p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-500 transition-colors"
+                     title="Copy wallet address"
+                   >
+                     <svg v-if="!walletCopied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                     </svg>
+                     <svg v-else class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                     </svg>
+                   </button>
+                 </div>
+               </div>
+               <div class="p-4 bg-gray-50 dark:bg-[#0d1117] rounded-xl border dark:border-[#30363d] border-gray-200">
+                 <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Last Login</label>
+                 <p class="text-sm mt-1 text-gray-700 dark:text-gray-300">{{ lastLoginDisplay }}</p>
                </div>
              </div>
            </div>
@@ -426,15 +445,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { isDark, toggleTheme } from '../services/theme'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import { registerPasskey, getPasskeys, deletePasskey, isPasskeySupported } from '../services/passkeyService.js'
 import { useConfirm } from '../composables/useConfirm.js'
+import { useToast } from '../composables/useToast.js'
 import { API_BASE_URL } from '../apiConfig'
 
 const { confirm } = useConfirm()
+const toast = useToast()
 
 const router = useRouter()
 const activeTab = ref('profile') // Default tab
@@ -463,6 +484,56 @@ const form = reactive({
 const isLoading = ref(false)
 const error = ref('')
 const success = ref('')
+
+// Wallet copy state
+const walletCopied = ref(false)
+async function copyWalletAddress() {
+  try {
+    await navigator.clipboard.writeText(user.value.ethereum_address)
+    walletCopied.value = true
+    toast.success('Wallet address copied!')
+    setTimeout(() => { walletCopied.value = false }, 2000)
+  } catch {
+    toast.error('Could not copy address.')
+  }
+}
+
+// Last login
+const lastLogin = ref(null)
+const lastLoginDisplay = computed(() => {
+  if (!lastLogin.value) return 'Never recorded'
+  const d = new Date(lastLogin.value.endsWith('Z') ? lastLogin.value : lastLogin.value + 'Z')
+  return d.toLocaleString()
+})
+
+// Session expiry watcher
+let sessionTimer = null
+let sessionWarnTimer = null
+function setupSessionExpiry() {
+  const token = localStorage.getItem('token')
+  if (!token) return
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const expiresAt = payload.exp * 1000
+    const now = Date.now()
+    const msLeft = expiresAt - now
+    if (msLeft <= 0) return
+    // Warn 60s before expiry
+    const warnIn = msLeft - 60000
+    if (warnIn > 0) {
+      sessionWarnTimer = setTimeout(() => {
+        toast.warning('Your session expires in 60 seconds. Save your work!')
+      }, warnIn)
+    }
+    // Redirect on expiry
+    sessionTimer = setTimeout(() => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      toast.error('Session expired. Please log in again.')
+      setTimeout(() => router.push('/login?reason=session_expired'), 1500)
+    }, msLeft)
+  } catch (e) { /* malformed token */ }
+}
 
 // Passkey State
 const passkeySupported = ref(false)
@@ -499,18 +570,20 @@ function formatDate(dateStr) {
   })
 }
 
-// Fetch fresh user data and passkeys on mount
+// Fetch fresh user data, passkeys and last login on mount
 onMounted(async () => {
     passkeySupported.value = isPasskeySupported()
+    setupSessionExpiry()
 
     const token = localStorage.getItem('token')
     if (token) {
+        let data = null
         try {
             const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             if (res.ok) {
-                const data = await res.json()
+                data = await res.json()
                 user.value = data
                 localStorage.setItem('user', JSON.stringify(data))
             }
@@ -525,7 +598,25 @@ onMounted(async () => {
 
         // Check if 2FA is enabled
         twoFA.enabled = data?.totp_enabled || false
+
+        // Fetch last login
+        if (data?.id) {
+            try {
+                const res2 = await fetch(`${API_BASE_URL}/api/admin/last-login/${data.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                if (res2.ok) {
+                    const ld = await res2.json()
+                    lastLogin.value = ld.last_login
+                }
+            } catch (e) { /* non-critical */ }
+        }
     }
+})
+
+onUnmounted(() => {
+  if (sessionTimer) clearTimeout(sessionTimer)
+  if (sessionWarnTimer) clearTimeout(sessionWarnTimer)
 })
 
 async function fetchPasskeys() {

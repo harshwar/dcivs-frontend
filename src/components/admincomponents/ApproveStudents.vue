@@ -11,6 +11,60 @@ const API_BASE = `${API_BASE_URL}/api/admin`
 const pendingStudents = ref([])
 const isLoading = ref(false)
 const isProcessing = ref(null) // ID of student being processed
+const selectedIds = ref(new Set()) // For bulk approve
+const isBulkProcessing = ref(false)
+
+const allSelected = computed(() =>
+  pendingStudents.value.length > 0 && selectedIds.value.size === pendingStudents.value.length
+)
+
+function toggleSelectAll() {
+  if (allSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(pendingStudents.value.map(s => s.id))
+  }
+}
+
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+async function handleBulkApprove() {
+  if (selectedIds.value.size === 0) return
+  const confirmed = await confirm(
+    'Bulk Approve',
+    `Approve ${selectedIds.value.size} selected student(s)? This will create their wallets.`,
+    { confirmText: 'Approve All', danger: false }
+  )
+  if (!confirmed) return
+
+  isBulkProcessing.value = true
+  try {
+    const token = localStorage.getItem('adminToken')
+    const res = await fetch(`${API_BASE}/bulk-approve`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [...selectedIds.value] })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      toast.success(data.message)
+      // Remove approved students from list
+      pendingStudents.value = pendingStudents.value.filter(s => !data.results.approved.includes(s.id))
+      selectedIds.value = new Set()
+    } else {
+      throw new Error(data.error || 'Bulk approval failed')
+    }
+  } catch (err) {
+    toast.error(err.message)
+  } finally {
+    isBulkProcessing.value = false
+  }
+}
 
 // Edit Modal State
 const editingStudent = ref(null)
@@ -169,9 +223,21 @@ onMounted(fetchPending)
         <h3 class="text-xl font-bold text-gray-900 dark:text-white">Identity Approval Queue</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">Review and activate student registrations who have verified their emails.</p>
       </div>
-      <button @click="fetchPending" class="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-        <span :class="{ 'animate-spin': isLoading }" class="inline-block">↻</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Bulk Approve -->
+        <button
+          v-if="selectedIds.size > 0"
+          @click="handleBulkApprove"
+          :disabled="isBulkProcessing"
+          class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+        >
+          <span v-if="isBulkProcessing" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+          {{ isBulkProcessing ? 'Approving...' : `Approve Selected (${selectedIds.size})` }}
+        </button>
+        <button @click="fetchPending" class="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <span :class="{ 'animate-spin': isLoading }" class="inline-block">↻</span>
+        </button>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -189,8 +255,28 @@ onMounted(fetchPending)
 
     <!-- Student List -->
     <div v-else class="grid grid-cols-1 gap-4">
-      <div v-for="student in pendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-indigo-500/30 transition-all">
+      <!-- Select All header -->
+      <div class="flex items-center gap-3 px-2">
+        <input
+          type="checkbox"
+          :checked="allSelected"
+          @change="toggleSelectAll"
+          class="w-4 h-4 accent-indigo-600 cursor-pointer"
+          :id="'select-all-students'"
+        />
+        <label for="select-all-students" class="text-sm text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+          Select All ({{ pendingStudents.length }})
+        </label>
+      </div>
+      <div v-for="student in pendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-indigo-500/30 transition-all" :class="{ 'border-indigo-500/40 bg-indigo-500/5': selectedIds.has(student.id) }">
         <div class="flex items-center gap-4">
+          <!-- Checkbox -->
+          <input
+            type="checkbox"
+            :checked="selectedIds.has(student.id)"
+            @change="toggleSelect(student.id)"
+            class="w-4 h-4 accent-indigo-600 cursor-pointer shrink-0"
+          />
           <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
             {{ student.full_name.charAt(0) }}
           </div>

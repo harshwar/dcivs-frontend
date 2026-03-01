@@ -25,6 +25,14 @@
             <div class="info-box bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400">
               💡 The verification link expires in 24 hours. Once verified, your account will be reviewed by administration.
             </div>
+            <button
+              @click="resendVerification"
+              :disabled="resendLoading || resendSent"
+              class="mt-4 w-full py-3 text-sm font-medium rounded-2xl transition-all border"
+              :class="resendSent ? 'border-green-500/30 text-green-500 cursor-default' : 'border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10'"
+            >
+              {{ resendSent ? '✅ New link sent — check your inbox' : resendLoading ? 'Sending...' : '↻ Resend verification email' }}
+            </button>
           </template>
 
           <!-- PENDING APPROVAL -->
@@ -83,13 +91,33 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
+import { API_BASE_URL } from '../apiConfig'
 
 const route = useRoute()
 const status = computed(() => route.query.status || '')
+const email = computed(() => route.query.email || '')
+
+// Resend verification
+const resendLoading = ref(false)
+const resendSent = ref(false)
+async function resendVerification() {
+  if (!email.value) return
+  resendLoading.value = true
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.value })
+    })
+    resendSent.value = true
+  } catch (e) { /* silent */ } finally {
+    resendLoading.value = false
+  }
+}
 </script>
 
 <style scoped>

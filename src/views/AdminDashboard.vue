@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue' // Vue composition API utilities
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue' // Vue composition API utilities
 import { useRouter } from 'vue-router' // Router for page navigation
 import CertificateIssuance from '../components/admincomponents/CertificateIssuance.vue' // Custom component for certificate issuance form
 import BatchOperations from '../components/admincomponents/BatchOperations.vue' // Batch CSV operations
@@ -393,9 +393,16 @@ function formatDate(dateStr) {
 }
 
 // Automatically fetch data when the component is mounted to the DOM
+let pendingRefreshInterval = null
 onMounted(() => {
   fetchDashboardData()
   fetchPendingCount()
+  // Auto-refresh pending badge every 60s
+  pendingRefreshInterval = setInterval(fetchPendingCount, 60000)
+})
+
+onUnmounted(() => {
+  if (pendingRefreshInterval) clearInterval(pendingRefreshInterval)
 })
 
 // Theme Helper
