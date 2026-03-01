@@ -76,7 +76,7 @@ function logout() {
  * 1. Load User's Wallet
  * Checks if the user already has a wallet stored in the DB.
  */
-async function loadWallet(forceLocked = false) {
+async function loadWallet() {
   if (!token.value) {
     status.value = 'unauthorized';
     return;
@@ -118,24 +118,8 @@ async function loadWallet(forceLocked = false) {
     encryptedJson.value = data.encrypted_json;
     walletAddress.value = data.public_address;
 
-    // Fetch the absolute latest user state from the backend to prevent onboarding loops
-    try {
-      const userRes = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: apiHeaders.value
-      });
-      if (userRes.ok) {
-        const freshUser = await userRes.json();
-        currentUser.value = freshUser.user;
-        localStorage.setItem('user', JSON.stringify(freshUser.user));
-      }
-    } catch (e) {
-      console.warn('Could not refresh user state', e);
-    }
-
     // Check if wallet needs onboarding (PIN not set = still encrypted with temp key)
-    if (forceLocked) {
-      status.value = 'locked';
-    } else if (!currentUser.value.wallet_pin_set) {
+    if (!currentUser.value.wallet_pin_set) {
       status.value = 'onboarding';
       onboardingStep.value = 1;
     } else {
@@ -302,7 +286,7 @@ async function completeOnboarding() {
 
     // Stay on wallet page and show the PIN prompt
     status.value = 'locked';
-    await loadWallet(true);
+    await loadWallet();
   } catch (err) {
     console.error('Onboarding save failed:', err);
     error.value = err.message;
@@ -555,25 +539,22 @@ function onPinInput(field) {
             </p>
 
             <label class="flex flex-col w-full mb-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Choose a 6-Digit PIN</span>
+              <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 transition-colors">Wallet Password</span>
               <input
                 v-model="password"
-                type="text"
-                inputmode="numeric"
-                maxlength="6"
-                placeholder="● ● ● ● ● ●"
-                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-14 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-center font-mono tracking-[0.5em] text-xl transition-all"
-                @input="onPasswordInput"
+                type="password"
+                placeholder="Enter a strong password"
+                class="flex w-full rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 border border-gray-300 dark:border-[#3b4754] bg-gray-50 dark:bg-transparent h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal transition-all"
               />
             </label>
 
             <button
               @click="createWallet"
-              :disabled="isBusy || password.length !== 6"
-              class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-sky-600 hover:bg-sky-700 text-white text-base font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30"
+              :disabled="isBusy"
+              class="flex w-full cursor-pointer items-center justify-center rounded-xl h-12 px-6 bg-sky-600 hover:bg-sky-700 text-white text-base font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30"
             >
-              <span v-if="!isBusy">Publish My Wallet ✅</span>
-              <span v-else>Encrypting...</span>
+              <span v-if="!isBusy">Create My Wallet</span>
+              <span v-else>Creating...</span>
             </button>
           </div>
 
