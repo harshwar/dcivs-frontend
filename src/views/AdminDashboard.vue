@@ -39,6 +39,7 @@ const students = ref([])
 const certificates = ref([])
 const logs = ref([])
 const logFilter = ref('all')
+const pendingCount = ref(0) // Approval queue badge count
 
 // Utility: Relative time formatter
 function relativeTime(dateStr) {
@@ -392,11 +393,29 @@ function formatDate(dateStr) {
 }
 
 // Automatically fetch data when the component is mounted to the DOM
-onMounted(fetchDashboardData)
+onMounted(() => {
+  fetchDashboardData()
+  fetchPendingCount()
+})
 
 // Theme Helper
 function setTheme(dark) {
   if (isDark.value !== dark) toggleTheme()
+}
+
+// Fetch pending approval count for sidebar badge
+async function fetchPendingCount() {
+  try {
+    const token = localStorage.getItem('adminToken')
+    if (!token) return
+    const res = await fetch(`${API_BASE}/admin/pending-students`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      pendingCount.value = Array.isArray(data) ? data.length : 0
+    }
+  } catch (e) { /* non-critical */ }
 }
 </script>
 
@@ -410,31 +429,62 @@ function setTheme(dark) {
         <div class="w-8 h-8 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/30"></div>
         <h1 class="font-bold text-lg">Admin Panel</h1>
       </div>
-      
-      <nav class="flex-1 space-y-2">
-        <button 
-          v-for="tab in ['dashboard', 'health', 'approval', 'records', 'students', 'issue', 'batch', 'logs', 'settings']"
-          :key="tab"
-          @click="playClick(); activeTab = tab"
-          :class="activeTab === tab 
-            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' 
-            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'"
-          class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all"
-        >
-          <span v-if="tab === 'dashboard'">📊</span>
-          <span v-else-if="tab === 'health'">🏥</span>
-          <span v-else-if="tab === 'approval'">🛡️</span>
-          <span v-else-if="tab === 'records'">📜</span>
-          <span v-else-if="tab === 'students'">🎓</span>
-          <span v-else-if="tab === 'issue'">✍️</span>
-          <span v-else-if="tab === 'batch'">📤</span>
-          <span v-else-if="tab === 'logs'">📜</span>
-          <span v-else-if="tab === 'settings'">⚙️</span>
-          <span class="capitalize">{{ tab === 'issue' ? 'Register Record' : tab === 'batch' ? 'Batch Operations' : tab === 'logs' ? 'Activity Logs' : tab === 'approval' ? 'Approval Queue' : tab }}</span>
+
+      <nav class="flex-1 space-y-1 overflow-y-auto">
+
+        <!-- Group: Overview -->
+        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600 px-3 mb-1">Overview</p>
+        <button @click="playClick(); activeTab = 'dashboard'" :class="activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>📊</span> Dashboard
         </button>
+        <button @click="playClick(); activeTab = 'health'" :class="activeTab === 'health' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>🏥</span> System Health
+        </button>
+
+        <!-- Divider -->
+        <div class="my-2 border-t border-gray-200 dark:border-white/5"></div>
+
+        <!-- Group: Students -->
+        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600 px-3 mb-1">Students</p>
+        <button @click="playClick(); activeTab = 'approval'; fetchPendingCount()" :class="activeTab === 'approval' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>🛡️</span>
+          <span class="flex-1">Approval Queue</span>
+          <span v-if="pendingCount > 0" class="ml-auto text-[10px] font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-tight">{{ pendingCount }}</span>
+        </button>
+        <button @click="playClick(); activeTab = 'students'" :class="activeTab === 'students' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>🎓</span> Students
+        </button>
+
+        <!-- Divider -->
+        <div class="my-2 border-t border-gray-200 dark:border-white/5"></div>
+
+        <!-- Group: Certificates -->
+        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600 px-3 mb-1">Certificates</p>
+        <button @click="playClick(); activeTab = 'issue'" :class="activeTab === 'issue' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>✍️</span> Register Record
+        </button>
+        <button @click="playClick(); activeTab = 'batch'" :class="activeTab === 'batch' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>📤</span> Batch Operations
+        </button>
+        <button @click="playClick(); activeTab = 'records'" :class="activeTab === 'records' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>🗂️</span> Records
+        </button>
+
+        <!-- Divider -->
+        <div class="my-2 border-t border-gray-200 dark:border-white/5"></div>
+
+        <!-- Group: System -->
+        <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-600 px-3 mb-1">System</p>
+        <button @click="playClick(); activeTab = 'logs'" :class="activeTab === 'logs' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>📋</span> Activity Logs
+        </button>
+        <button @click="playClick(); activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1b2127]'" class="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm">
+          <span>⚙️</span> Settings
+        </button>
+
       </nav>
 
-      <button @click="logout" class="flex items-center gap-3 px-4 py-3 mt-auto text-red-500 hover:text-red-600 transition-colors bg-red-50 dark:bg-red-900/10 rounded-xl font-medium">
+      <button @click="logout" class="flex items-center gap-3 px-4 py-3 mt-4 text-red-500 hover:text-red-600 transition-colors bg-red-50 dark:bg-red-900/10 rounded-xl font-medium text-sm">
         <span>🚪</span> Logout
       </button>
     </aside>
