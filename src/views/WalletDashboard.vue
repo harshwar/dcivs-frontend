@@ -36,11 +36,7 @@ const seedCopied = ref(false);
 
 // --- Auth Utilities ---
 const token = computed(() => localStorage.getItem('token') || ''); 
-const currentUser = computed(() => {
-  try {
-    return JSON.parse(localStorage.getItem('user') || '{}');
-  } catch (e) { return {}; }
-});
+const currentUser = ref(JSON.parse(localStorage.getItem('user') || '{}'));
 const isPinEnabled = computed(() => currentUser.value.wallet_pin_set === true);
 const needsPinUpgrade = computed(() => currentUser.value.has_passkeys && !currentUser.value.wallet_pin_set);
 
@@ -278,6 +274,7 @@ async function completeOnboarding() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     user.wallet_pin_set = true;
     localStorage.setItem('user', JSON.stringify(user));
+    currentUser.value = user;
 
     toast.success('Wallet secured with your PIN! 🎉');
 
