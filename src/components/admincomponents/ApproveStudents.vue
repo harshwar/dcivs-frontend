@@ -1,3 +1,4 @@
+<script setup>
 import { ref, onMounted, computed } from 'vue'
 import PaginationControls from '../ui/PaginationControls.vue'
 import { API_BASE_URL } from '../../apiConfig'
