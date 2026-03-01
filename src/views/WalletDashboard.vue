@@ -830,6 +830,7 @@ function onPinInput(field) {
                   :totalPages="totalPages" 
                 />
               </div>
+            </div>
           </div>
           
       </div>
