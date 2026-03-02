@@ -291,7 +291,7 @@ onMounted(fetchPending)
            Showing {{ paginatedPendingStudents.length }} of {{ pendingStudents.length }}
         </div>
       </div>
-      <div v-for="student in paginatedPendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-indigo-500/30 transition-all" :class="{ 'border-indigo-500/40 bg-indigo-500/5': selectedIds.has(student.id) }">
+      <div v-for="student in paginatedPendingStudents" :key="student.id" class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/10 border-l-4 border-l-indigo-500 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-[0_4px_20px_rgba(99,102,241,0.15)] transition-all" :class="{ 'bg-indigo-500/5': selectedIds.has(student.id) }">
         <div class="flex items-center gap-4">
           <!-- Checkbox -->
           <input
@@ -333,11 +333,12 @@ onMounted(fetchPending)
           <button 
             @click="handleApprove(student)"
             :disabled="isProcessing !== null"
-            class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 group disabled:opacity-50"
+            class="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed"
           >
             <span v-if="isProcessing === student.id" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-            {{ isProcessing === student.id ? 'Activating...' : 'Approve & Create Wallet' }}
+            {{ isProcessing === student.id ? 'Creating Wallet...' : 'Approve & Create Wallet' }}
             <span v-if="isProcessing !== student.id" class="group-hover:translate-x-1 transition-transform">🚀</span>
+            <span v-if="isProcessing === student.id" class="ml-1 opacity-0 animate-fade-in-delayed">✨</span>
           </button>
         </div>
       </div>

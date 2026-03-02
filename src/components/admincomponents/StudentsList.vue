@@ -14,14 +14,14 @@
              <option v-for="y in uniqueYears" :key="y" :value="y">{{ y }}</option>
           </select>
           <!-- Search -->
-          <div class="relative flex-1 max-w-md">
+          <div class="relative flex-1 max-w-md group">
              <input 
                v-model="searchQuery" 
                type="text" 
                placeholder="Search by name, ID or wallet..." 
-               class="glass-input pl-10 pr-4 py-2 rounded-lg text-sm w-full bg-white dark:bg-[#1b2127] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+               class="glass-input pl-10 pr-4 py-2 rounded-lg text-sm w-full bg-white dark:bg-[#1b2127] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all peer outline-none"
              />
-             <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
+             <span class="absolute left-3 top-2.5 text-gray-400 peer-focus:text-indigo-500 peer-focus:animate-icon-pulse transition-colors">🔍</span>
           </div>
        </div>
        <div class="text-sm text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
@@ -37,10 +37,10 @@
     </div>
 
     <!-- Table -->
-    <div class="glass-panel rounded-2xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
+    <div class="glass-panel bg-white/40 dark:bg-black/20 backdrop-blur-md rounded-2xl overflow-hidden shadow-lg border border-gray-200/50 dark:border-white/5">
        <div class="overflow-x-auto">
           <table class="w-full text-left">
-             <thead class="bg-gray-50 dark:bg-[#1b2127] text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
+             <thead class="bg-gray-50/50 dark:bg-[#1b2127]/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200/50 dark:border-gray-700/50">
                 <tr>
                    <th class="px-6 py-3 cursor-pointer hover:text-indigo-500 transition-colors">Name</th>
                    <th class="px-6 py-3">ID Number</th>
@@ -50,11 +50,11 @@
                    <th class="px-6 py-3 text-right">Actions</th>
                 </tr>
              </thead>
-              <tbody class="divide-y divide-gray-200 dark:divide-[#283039]">
+              <tbody class="divide-y divide-gray-200/50 dark:divide-white/5">
                 <tr 
                   v-for="student in paginatedStudents" 
                   :key="student.id" 
-                  class="hover:bg-gray-50 dark:hover:bg-[#1b2127]/50 transition cursor-pointer group"
+                  class="hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition cursor-pointer group"
                   @click="openDetails(student)"
                 >
                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-white flex items-center gap-3">
@@ -319,5 +319,14 @@ function exportCSV() {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-icon-pulse {
+  animation: iconPulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes iconPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 </style>
