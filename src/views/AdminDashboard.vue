@@ -641,8 +641,6 @@ async function fetchPendingCount() {
             </div>
           </div>
 
-          </div>
-
           <!-- Loading State (Pulse Skeleton) -->
           <div v-if="analyticsLoading" class="p-12 text-center text-gray-500 flex flex-col items-center justify-center min-h-[400px]">
              <!-- Skeleton Grid Row 1 -->
