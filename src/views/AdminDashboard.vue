@@ -271,6 +271,7 @@ async function fetchLogs() {
   }
 }
 
+
 /**
  * Show QR Code modal
  */
@@ -579,15 +580,17 @@ async function fetchPendingCount() {
         </div>
       </header>
 
-      <div class="p-8 max-w-7xl mx-auto w-full space-y-8">
-        
-        <!-- DASHBOARD TAB -->
-        <div v-if="activeTab === 'dashboard'" class="space-y-8 animate-fade-in">
+      <div class="p-8 max-w-7xl mx-auto w-full space-y-8 relative">
+        <Transition name="fade-slide" mode="out-in">
+          
+          <!-- DASHBOARD TAB -->
+          <div v-if="activeTab === 'dashboard'" key="dashboard" class="space-y-8">
           <!-- ANALYTICS GRID -->
           <div v-if="analytics" class="space-y-6">
-            <!-- Row 1: Key Stats -->
+            <!-- Row 1: Key Stats - Staggered Entry -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                <StatCard 
+                 class="opacity-0 animate-fade-slide-up" style="animation-delay: 0.1s;"
                  label="Total Students" 
                  :value="analytics.stats.total_students" 
                  icon="👥" 
@@ -595,6 +598,7 @@ async function fetchPendingCount() {
                  :subtext="`+${analytics.charts.student_funnel.registered} all time`"
                />
                <StatCard 
+                 class="opacity-0 animate-fade-slide-up" style="animation-delay: 0.2s;"
                  label="Certificates Issued" 
                  :value="analytics.stats.total_certificates" 
                  icon="🎓" 
@@ -602,6 +606,7 @@ async function fetchPendingCount() {
                  :subtext="analytics.stats.avg_time_to_issue_days > 0 ? `~${analytics.stats.avg_time_to_issue_days} days to issue` : 'No data'"
                />
                <StatCard 
+                 class="opacity-0 animate-fade-slide-up" style="animation-delay: 0.3s;"
                  label="Active Wallets" 
                  :value="analytics.stats.active_wallets" 
                  icon="🦊" 
@@ -609,6 +614,7 @@ async function fetchPendingCount() {
                  :subtext="`${Math.round((analytics.stats.active_wallets / analytics.stats.total_students) * 100)}% activation`"
                />
                <StatCard 
+                 class="opacity-0 animate-fade-slide-up" style="animation-delay: 0.4s;"
                  label="Revocations" 
                  :value="analytics.stats.revoked_certificates" 
                  icon="🚫" 
@@ -635,16 +641,25 @@ async function fetchPendingCount() {
             </div>
           </div>
 
-          <!-- Loading State -->
-          <div v-if="analyticsLoading" class="p-12 text-center text-gray-500">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-2"></div>
-            <p>Loading analytics...</p>
+          </div>
+
+          <!-- Loading State (Pulse Skeleton) -->
+          <div v-if="analyticsLoading" class="p-12 text-center text-gray-500 flex flex-col items-center justify-center min-h-[400px]">
+             <!-- Skeleton Grid Row 1 -->
+             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full mb-8">
+               <div v-for="i in 4" :key="i" class="h-32 rounded-2xl bg-gray-200 dark:bg-[#161b22] animate-pulse-glow" :style="`animation-delay: ${i * 0.15}s;`"></div>
+             </div>
+             <!-- Skeleton Grid Row 2 -->
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+               <div class="col-span-2 h-64 rounded-2xl bg-gray-200 dark:bg-[#161b22] animate-pulse-glow" style="animation-delay: 0.6s;"></div>
+               <div class="col-span-1 h-64 rounded-2xl bg-gray-200 dark:bg-[#161b22] animate-pulse-glow" style="animation-delay: 0.7s;"></div>
+             </div>
           </div>
 
         </div>
 
         <!-- RECORDS TAB -->
-        <div v-if="activeTab === 'records'" class="animate-fade-in px-4 md:px-8 py-6">
+        <div v-else-if="activeTab === 'records'" key="records" class="px-4 md:px-8 py-6 w-full">
            <CertificatesList 
              :certificates="certificates" 
              v-model:searchQuery="searchQuery"
@@ -822,6 +837,7 @@ async function fetchPendingCount() {
 
            </div>
         </div>
+        </Transition>
 
       </div>
     </main>
