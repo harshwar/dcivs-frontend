@@ -51,7 +51,7 @@ const iconBgClass = computed(() => {
     blue: 'bg-blue-500/10 text-blue-500',
     rose: 'bg-rose-500/10 text-rose-500'
   };
-  };
+
   return map[props.color] || map.indigo;
 });
 
