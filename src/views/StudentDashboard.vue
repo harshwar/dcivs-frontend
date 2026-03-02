@@ -40,7 +40,7 @@
           <SkeletonCard type="profile" class="w-full" />
         </div>
         <div v-else class="lg:col-span-2 p-6 glass-panel rounded-2xl flex items-center gap-6 transition-all duration-300">
-          <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl text-white font-bold shadow-lg shadow-indigo-500/20 shrink-0">
+          <div class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl text-white font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] shrink-0">
             {{ initials }}
           </div>
           <div class="min-w-0">
@@ -129,7 +129,16 @@
             </div>
             <div class="p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-[#283039]">
               <p class="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wider">Public Address</p>
-              <p class="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{{ student.ethereum_address }}</p>
+              <div class="flex items-center gap-2">
+                <p class="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{{ student.ethereum_address }}</p>
+                <button @click="copyAddress(student.ethereum_address)" class="text-gray-400 hover:text-indigo-500 transition-colors" title="Copy Address">
+                  <span v-if="copied">✅</span>
+                  <span v-else>📋</span>
+                </button>
+                <a :href="`https://sepolia.etherscan.io/address/${student.ethereum_address}`" target="_blank" class="text-gray-400 hover:text-indigo-500 transition-colors" title="View on Etherscan">
+                  🔗
+                </a>
+              </div>
             </div>
             <button @click="$router.push('/student/wallet')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 text-sm">
               🎓 View My Achievements →
@@ -159,7 +168,16 @@
             </div>
             <div class="p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border border-gray-200 dark:border-[#283039]">
               <p class="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wider">Public Address</p>
-              <p class="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{{ student.ethereum_address }}</p>
+              <div class="flex items-center gap-2">
+                <p class="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{{ student.ethereum_address }}</p>
+                <button @click="copyAddress(student.ethereum_address)" class="text-gray-400 hover:text-indigo-500 transition-colors" title="Copy Address">
+                  <span v-if="copied">✅</span>
+                  <span v-else>📋</span>
+                </button>
+                <a :href="`https://sepolia.etherscan.io/address/${student.ethereum_address}`" target="_blank" class="text-gray-400 hover:text-indigo-500 transition-colors" title="View on Etherscan">
+                  🔗
+                </a>
+              </div>
             </div>
             <!-- Quick PIN unlock -->
             <div class="space-y-2">
@@ -203,12 +221,12 @@
               class="flex items-center gap-3 p-3 rounded-xl border transition-all"
               :class="[
                 item.done
-                  ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]'
                   : 'bg-gray-50 dark:bg-[#1b2127]/50 border-gray-200 dark:border-[#283039] cursor-pointer hover:border-indigo-400/30',
               ]"
               @click="!item.done && item.link && $router.push(item.link)"
             >
-              <span class="text-lg shrink-0">{{ item.done ? '✅' : '⬜' }}</span>
+              <span class="text-lg shrink-0" :class="{ 'animate-checkmark-pop origin-center': item.done }">{{ item.done ? '✅' : '⬜' }}</span>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ item.label }}</p>
                 <p class="text-xs text-gray-400 truncate">{{ item.desc }}</p>
@@ -221,7 +239,7 @@
 
       <!-- Feature 2: Tip of the day -->
       <section>
-        <div class="glass-panel rounded-2xl p-5 flex items-start gap-4 border border-indigo-400/10">
+        <div class="glass-panel rounded-2xl p-5 flex items-start gap-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 border-l-4 border-l-indigo-400">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-xl shrink-0">💡</div>
           <div>
             <p class="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-1">Tip of the Day</p>
@@ -278,6 +296,19 @@ const quickPassword = ref('')
 const walletBusy = ref(false)
 const walletError = ref('')
 const walletUnlocked = ref(false)
+
+// Copy handling
+const copied = ref(false)
+async function copyAddress(address) {
+  if (!address) return
+  try {
+    await navigator.clipboard.writeText(address)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch (err) {
+    console.error("Failed to copy", err)
+  }
+}
 
 // --- Tip of the Day (Feature 2) ---
 const tips = [
@@ -397,4 +428,11 @@ onMounted(() => {
   50% { opacity: 0.85; }
 }
 .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+
+@keyframes checkmark-pop {
+  0% { transform: scale(0.5); opacity: 0; filter: drop-shadow(0 0 0 rgba(16, 185, 129, 0)); }
+  50% { transform: scale(1.3); opacity: 1; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.6)); }
+  100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.3)); }
+}
+.animate-checkmark-pop { animation: checkmark-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 </style>
