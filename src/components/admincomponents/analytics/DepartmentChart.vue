@@ -1,7 +1,7 @@
 <template>
   <div class="glass-panel p-6 rounded-2xl relative">
     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Certificates by Department</h3>
-    <div class="relative h-64 w-full">
+    <div class="relative h-64 w-full" :style="isDark ? 'filter: drop-shadow(0 0 8px rgba(168,85,247,0.3));' : 'filter: drop-shadow(0 0 4px rgba(168,85,247,0.2));'">
       <Bar :data="chartData" :options="chartOptions" />
     </div>
   </div>
@@ -61,13 +61,17 @@ const chartOptions = computed(() => {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: textColor }
+        ticks: { color: textColor, font: { weight: '600', size: 11 } }
       },
       y: {
         grid: { color: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
-        ticks: { color: textColor, precision: 0 },
+        ticks: { color: textColor, precision: 0, font: { weight: '600', size: 11 } },
         beginAtZero: true
       }
+    },
+    animation: {
+      duration: 1500,
+      easing: 'easeOutQuart'
     }
   };
 });

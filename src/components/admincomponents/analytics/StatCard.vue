@@ -1,5 +1,5 @@
 <template>
-  <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:shadow-lg transition-all duration-300 border border-white/20">
+  <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group transition-all duration-300 border border-white/20 border-t-4" :class="cardClasses">
     <div class="flex justify-between items-start mb-4">
       <div>
         <p class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ label }}</p>
@@ -50,6 +50,20 @@ const iconBgClass = computed(() => {
     amber: 'bg-amber-500/10 text-amber-500',
     blue: 'bg-blue-500/10 text-blue-500',
     rose: 'bg-rose-500/10 text-rose-500'
+  };
+  };
+  return map[props.color] || map.indigo;
+});
+
+const cardClasses = computed(() => {
+  const map = {
+    indigo: 'border-t-indigo-500 hover:shadow-[0_8px_30px_rgb(99,102,241,0.2)]', // glow effect
+    purple: 'border-t-purple-500 hover:shadow-[0_8px_30px_rgb(168,85,247,0.2)]',
+    green: 'border-t-green-500 hover:shadow-[0_8px_30px_rgb(34,197,94,0.2)]',
+    red: 'border-t-red-500 hover:shadow-[0_8px_30px_rgb(239,68,68,0.2)]',
+    amber: 'border-t-amber-500 hover:shadow-[0_8px_30px_rgb(245,158,11,0.2)]',
+    blue: 'border-t-blue-500 hover:shadow-[0_8px_30px_rgb(59,130,246,0.2)]',
+    rose: 'border-t-rose-500 hover:shadow-[0_8px_30px_rgb(244,63,94,0.2)]'
   };
   return map[props.color] || map.indigo;
 });

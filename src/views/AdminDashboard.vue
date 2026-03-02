@@ -551,7 +551,17 @@ async function fetchPendingCount() {
     <!-- Main Content -->
     <main class="flex-1 flex flex-col relative overflow-y-auto">
       <header class="flex items-center justify-between px-8 py-5 border-b border-transparent glass-header sticky top-0 z-20">
-        <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab === 'approval' ? 'Approval Queue' : activeTab }}</h2>
+        <!-- Enhanced Header Content -->
+        <div class="flex flex-col">
+          <div class="flex items-center gap-3">
+            <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab === 'approval' ? 'Approval Queue' : activeTab }}</h2>
+            <div class="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+              <span class="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-widest">All Systems Operational</span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5 hidden sm:block">Blockchain Credential Monitoring System</p>
+        </div>
         <div class="flex items-center gap-4">
           <!-- Wallet Balance / Status -->
           <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 shadow-inner group relative">
@@ -565,9 +575,19 @@ async function fetchPendingCount() {
                 <span class="font-bold cursor-help" :title="walletError">Disconnected</span>
              </div>
 
-             <div v-else-if="walletInfo" class="flex items-center gap-2 font-mono">
-                <span class="text-gray-500 text-xs hidden lg:inline">Wallet:</span>
-                <span class="text-blue-500 font-bold dark:text-blue-400">{{ walletInfo.balanceEth }} ETH</span>
+             <div v-else-if="walletInfo" class="flex items-center gap-3 font-mono">
+                <!-- Network Indicator -->
+                <div class="flex items-center gap-1.5" title="Connected to Sepolia Testnet">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span class="text-gray-500 dark:text-gray-400 text-xs hidden lg:inline font-sans">Connected to Sepolia</span>
+                </div>
+                <!-- Vertical Divider -->
+                <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 hidden lg:block"></div>
+                <!-- Balance -->
+                <span class="text-blue-600 font-bold dark:text-blue-400">{{ walletInfo.balanceEth }} ETH</span>
              </div>
 
              <div v-else class="text-gray-400 text-xs italic">

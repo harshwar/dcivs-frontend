@@ -1,7 +1,7 @@
 <template>
   <div class="glass-panel p-6 rounded-2xl relative">
     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Governance Health</h3>
-    <div class="relative h-64 w-full flex items-center justify-center">
+    <div class="relative h-64 w-full flex items-center justify-center" :style="isDark ? 'filter: drop-shadow(0 0 6px rgba(16,185,129,0.3));' : 'filter: drop-shadow(0 0 4px rgba(16,185,129,0.2));'">
       <Doughnut :data="chartData" :options="chartOptions" />
       
       <!-- Center Text -->
@@ -59,7 +59,8 @@ const chartOptions = computed(() => {
         labels: {
           color: isDark.value ? '#cbd5e1' : '#64748b',
           usePointStyle: true,
-          padding: 20
+          padding: 20,
+          font: { weight: '600', size: 12 }
         }
       },
       tooltip: {
@@ -69,6 +70,12 @@ const chartOptions = computed(() => {
         borderWidth: 1,
         padding: 10
       }
+    },
+    animation: {
+      animateScale: true,
+      animateRotate: true,
+      duration: 1500,
+      easing: 'easeOutQuart'
     }
   };
 });

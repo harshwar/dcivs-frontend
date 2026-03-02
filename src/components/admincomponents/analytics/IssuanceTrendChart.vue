@@ -1,7 +1,7 @@
 <template>
   <div class="glass-panel p-6 rounded-2xl relative">
     <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Issuance Trend</h3>
-    <div class="relative h-64 w-full">
+    <div class="relative h-64 w-full" :style="isDark ? 'filter: drop-shadow(0 0 8px rgba(99,102,241,0.6));' : 'filter: drop-shadow(0 0 4px rgba(99,102,241,0.3));'">
       <Line :data="chartData" :options="chartOptions" />
     </div>
   </div>
@@ -77,13 +77,17 @@ const chartOptions = computed(() => {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: textColor }
+        ticks: { color: textColor, font: { weight: '600', size: 11 } }
       },
       y: {
         grid: { color: gridColor },
-        ticks: { color: textColor, precision: 0 },
+        ticks: { color: textColor, precision: 0, font: { weight: '600', size: 11 } },
         beginAtZero: true
       }
+    },
+    animation: {
+      duration: 1500,
+      easing: 'easeOutQuart'
     },
     interaction: {
       mode: 'nearest',
