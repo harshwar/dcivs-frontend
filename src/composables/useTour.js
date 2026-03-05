@@ -10,7 +10,7 @@ export const tourScript = [
     route: "/",
     targetId: null, // Center screen
     title: "The Platform Masterclass",
-    content: "Welcome to the end-to-end demonstration. We will journey through the Perimeter Security, the Admin Command Center, the AI Registration Pipeline, and finally the Student Web3 Vault. Let's begin.",
+    content: "Welcome to the end-to-end platform demonstration. We will journey through the Perimeter Security, the Admin Command Center, the AI Registration Pipeline, and finally, the Student Web3 Vault. Let's begin.",
     action: null
   },
   // ACT I: Login
@@ -19,7 +19,7 @@ export const tourScript = [
     route: "/admin-login",
     targetId: "tour-login-form",
     title: "Perimeter Defense",
-    content: "Before a packet even reaches our controllers, our perimeter deflects malicious actors. We strictly enforce Helmet security headers (XSS/Clickjacking), backend Rate Limiting (DDoS), and sanitize all strings against NoSQL/SQL injections.",
+    content: "Before a packet even reaches our controllers, our perimeter deflects malicious actors. We strictly enforce Helmet security headers, like X-S-S and Clickjacking protection. We also use backend Rate Limiting for D-DoS prevention, and sanitize all strings against injections.",
     action: null
   },
   {
@@ -36,7 +36,7 @@ export const tourScript = [
     route: "/admin-dashboard",
     targetId: "tour-system-status",
     title: "The Command Center",
-    content: "Welcome to the Admin Node. Our backend is connected directly to an RPC node on the Ethereum Sepolia testnet, anchoring data globally.",
+    content: "Welcome to the Admin Node. Our backend is connected directly to an R-P-C node on the Ethereum Sepolia testnet, anchoring all critical data globally.",
     action: "setTabDashboard"
   },
   {
@@ -53,7 +53,7 @@ export const tourScript = [
     route: "/admin-dashboard",
     targetId: "tour-health-monitor",
     title: "System Health",
-    content: "Active telemetry continuously measures microsecond ping latencies against the Database, the InterPlanetary File System (IPFS) network, and the Ethereum Blockchain JSON-RPC endpoints.",
+    content: "Active telemetry continuously measures microsecond ping latencies against the Database, the I-P-F-S network, and the Ethereum Blockchain JSON-R-P-C endpoints.",
     action: "setTabHealth"
   },
   // ACT IV: Blockchain Anchoring & AI
@@ -164,7 +164,7 @@ export const tourScript = [
     route: "/student/dashboard",
     targetId: "tour-student-address",
     title: "The Web3 Identity",
-    content: "Welcome to the Student Vault. The student controls their Ethereum identity. Everything here operates heavily in the browser engine via PBKDF2 derivation algorithms to decrypt their AES-256 vault client-side.",
+    content: "Welcome to the Student Vault. Here, the student controls their own Ethereum identity. Everything operates heavily in the browser engine, using P-B-K-D-F-2 derivation algorithms to decrypt their secure vault client-side.",
     action: null
   },
   {
@@ -190,7 +190,8 @@ export const tourScript = [
 // Use a singleton pattern so state persists across component unmounts and route changes without Pinia overhead.
 const state = {
   isActive: ref(false),
-  currentStepIndex: ref(0)
+  currentStepIndex: ref(0),
+  isVoiceEnabled: ref(true)
 }
 
 export function useTour() {
@@ -202,12 +203,14 @@ export function useTour() {
     if (savedActive === 'true') {
       state.isActive.value = true
       state.currentStepIndex.value = parseInt(sessionStorage.getItem('tourStep') || '0', 10)
+      state.isVoiceEnabled.value = sessionStorage.getItem('tourVoice') !== 'false'
     }
   }
 
   const saveState = () => {
     sessionStorage.setItem('tourActive', state.isActive.value)
     sessionStorage.setItem('tourStep', state.currentStepIndex.value)
+    sessionStorage.setItem('tourVoice', state.isVoiceEnabled.value)
   }
 
   const startTour = () => {
@@ -262,6 +265,7 @@ export function useTour() {
     nextStep,
     prevStep,
     loadState,
+    isVoiceEnabled: state.isVoiceEnabled,
     router
   }
 }

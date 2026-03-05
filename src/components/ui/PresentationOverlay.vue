@@ -22,9 +22,20 @@
             <span class="text-indigo-400">Step {{ currentStepIndex + 1 }}</span>
             <span class="text-gray-400 text-sm font-normal px-2 bg-gray-800 rounded-full border border-gray-700">{{ currentStep.title }}</span>
           </h3>
-          <button @click="closeTour" class="text-gray-500 hover:text-white transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+          <div class="flex items-center gap-4">
+            <!-- Narrator Toggle -->
+            <button 
+              @click="tour.isVoiceEnabled.value = !tour.isVoiceEnabled.value"
+              class="text-gray-400 hover:text-white transition-colors"
+              :title="tour.isVoiceEnabled.value ? 'Disable Narrator' : 'Enable Narrator'"
+            >
+              <span v-if="tour.isVoiceEnabled.value">🔊</span>
+              <span v-else class="opacity-50">🔇</span>
+            </button>
+            <button @click="closeTour" class="text-gray-400 hover:text-white transition-colors">
+              <span class="text-xl">&times;</span>
+            </button>
+          </div>
         </div>
         
         <p class="text-sm text-gray-300 leading-relaxed font-light">
@@ -191,10 +202,76 @@ const updateSpotlight = async () => {
   }, 300) // slight delay allows animations/renders to finish
 }
 
+const currentVoice = ref(null)
+
+// --- Speech Synthesis Logic ---
+const speak = (text) => {
+  if (!tour.isVoiceEnabled.value || typeof window === 'undefined' || !window.speechSynthesis) return
+
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel()
+
+  const utterance = new SpeechSynthesisUtterance(text)
+  
+  // Try to find a high-quality voice
+  const voices = window.speechSynthesis.getVoices()
+  if (voices.length > 0 && !currentVoice.value) {
+    // Priority: Natural/Neural -> Google US English -> First English voice
+    currentVoice.value = voices.find(v => v.name.includes('Natural') || v.name.includes('Neural')) ||
+                        voices.find(v => v.name.includes('Google US English')) ||
+                        voices.find(v => v.lang.startsWith('en'))
+  }
+
+  if (currentVoice.value) {
+    utterance.voice = currentVoice.value
+  }
+
+  utterance.rate = 0.95 // Slightly slower for better clarity
+  utterance.pitch = 1.0
+  utterance.volume = 1.0
+
+  window.speechSynthesis.speak(utterance)
+}
+
+// Ensure voices are loaded (browsers load them async)
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    const voices = window.speechSynthesis.getVoices()
+    currentVoice.value = voices.find(v => v.name.includes('Natural') || v.name.includes('Neural')) ||
+                        voices.find(v => v.name.includes('Google US English')) ||
+                        voices.find(v => v.lang.startsWith('en'))
+  }
+}
+
 // Watchers
 watch([isActive, currentStepIndex], () => {
   updateSpotlight()
   executeStepAction()
+  
+  // Narrate current step
+  const step = tour.tourScript[currentStepIndex.value]
+  if (step && isActive.value) {
+    const fullText = `${step.title}. ${step.content}`
+    // Small delay to ensure the UI has updated first
+    setTimeout(() => speak(fullText), 100)
+  }
+})
+
+// Stop speaking if tour is closed
+watch(isActive, (newVal) => {
+  if (!newVal && typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  }
+})
+
+// Handle Mute/Unmute
+watch(() => tour.isVoiceEnabled.value, (newVal) => {
+  if (!newVal && typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  } else if (newVal && isActive.value) {
+    const step = tour.tourScript[currentStepIndex.value]
+    if (step) speak(`${step.title}. ${step.content}`)
+  }
 })
 
 // Window Resize Listener
