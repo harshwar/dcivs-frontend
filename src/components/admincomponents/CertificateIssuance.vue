@@ -66,20 +66,6 @@
           hint="PNG, JPG, WEBP, HEIC, or PDF"
         />
 
-        <!-- Detailed AI Scan Progress Bar (Shows over the form) -->
-        <div v-if="isScanning && scanJob" class="mt-2 w-full bg-gray-800 rounded-lg overflow-hidden border border-gray-700 shadow-inner">
-           <!-- The Bar -->
-           <div class="h-6 bg-gradient-to-r from-blue-600 to-indigo-500 relative transition-all duration-500 ease-out flex items-center" :style="{ width: `${scanJob.percentage || 5}%` }">
-             <!-- Animated stripe overlay for active processing feel -->
-             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgNDBsNDAtNDBIMjBMMCAyMHptNDAgMEwwIDAwaDIwbDIwIDIweiIgZmlsbD0id2hpXRlIiBmaWxsLW9wYWNpdHk9Ii4xNSIvPjwvc3ZnPg==')] opacity-30 animate-[slide_1s_linear_infinite]"></div>
-           </div>
-           
-           <!-- Text Label Centered over the bar track -->
-           <div class="absolute w-full mt-[-24px] pointer-events-none flex justify-between items-center px-4 h-6 text-xs font-bold drop-shadow-md text-white">
-             <span>{{ scanJob.step_label || 'Processing...' }}</span>
-             <span>{{ scanJob.percentage || 0 }}%</span>
-           </div>
-        </div>
       </div>
 
       <!-- SUBMIT BUTTON -->
@@ -110,6 +96,16 @@
       :preExtractedText="autoExtractedText"
       @close="showConfirmationModal = false"
       @confirm="confirmIssuance"
+    />
+
+    <!-- Progress Tracker (Style 6 IDE) for AI Scanning -->
+    <ProgressTracker
+      v-if="scanJob"
+      :jobId="scanJob.id"
+      :visible="showScanProgressTracker"
+      windowTitle="scan.exe — AI Verification"
+      :steps="scanSteps"
+      @close="showScanProgressTracker = false; resetScanPoller()"
     />
 
     <!-- Progress Tracker (Style 6 IDE) -->
@@ -159,6 +155,14 @@ const isScanning = ref(false) // Loading state for AI scanning
 const showConfirmationModal = ref(false) // Modal visibility
 const showProgressTracker = ref(false) // Progress tracker overlay
 const activeJobId = ref('') // Current polling job
+
+const showScanProgressTracker = ref(false) // Progress tracker for scanning
+const scanSteps = [
+  { label: 'Initialize Vision' },
+  { label: 'Extract Text (OCR)' },
+  { label: 'Redact PII' },
+  { label: 'Gemini AI Analysis' }
+]
 
 const pipelineSteps = [
   { label: 'Fetch Wallet' },
@@ -219,6 +223,7 @@ async function scanCertificate(file) {
     if (res.ok) {
       const { jobId } = await res.json();
       // Start polling for scan results
+      showScanProgressTracker.value = true;
       startScanPolling(jobId, 2000);
     } else {
       throw new Error('Scan request failed');
@@ -291,12 +296,9 @@ watch(() => scanJob.value?.status, (status) => {
       }
     }
 
-    resetScanPoller();
-
   } else if (status === 'failed') {
     isScanning.value = false;
-    toast.error('AI Scanning failed. Please fill details manually.');
-    resetScanPoller();
+    toast.error('AI Scanning failed. Please view terminal details.');
   }
 });
 
