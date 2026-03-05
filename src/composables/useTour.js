@@ -25,7 +25,7 @@ export const tourScript = [
   // ACT II: Admin Overview
   {
     id: 2,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-system-status',
     title: 'The Command Center',
     content: 'Welcome to the Admin Node. Our backend is connected directly to an RPC node on the Ethereum Sepolia testnet, anchoring data globally.',
@@ -33,7 +33,7 @@ export const tourScript = [
   },
   {
     id: 3,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-stat-cards',
     title: 'Live Telemetry',
     content: 'Real-time aggregated cryptanalytics. We track total wallet generation, issuance throughput, and the overall accuracy rating of our proprietary AI pipeline.',
@@ -42,7 +42,7 @@ export const tourScript = [
   // ACT III: System Diagnostics
   {
     id: 4,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-health-monitor',
     title: 'System Health',
     content: 'Active telemetry continuously measures microsecond ping latencies against the Database, the InterPlanetary File System (IPFS) network, and the Ethereum Blockchain JSON-RPC endpoints.',
@@ -51,7 +51,7 @@ export const tourScript = [
   // ACT IV: Blockchain Anchoring & AI
   {
     id: 5,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-issue-uploader',
     title: 'AI Pipeline: The Entry Point',
     content: 'Documents undergo a powerful sequential pipeline. Step 1: An OpenCV visual daemon executes morphological erosion and dilation to strip physical gridlines from certificates for massive OCR accuracy improvements.',
@@ -59,7 +59,7 @@ export const tourScript = [
   },
   {
     id: 6,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-issue-form',
     title: 'Zero-Trust Processing',
     content: 'Step 2: A local Tesseract engine extracts characters. Step 3: Crucially, our mathematical string-similarity algorithms scrub Personally Identifiable Information (Name, Roll No.) before the sanitized payload hits external Gemini AI for final mapping.',
@@ -67,7 +67,7 @@ export const tourScript = [
   },
   {
     id: 7,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-issue-btn',
     title: 'Immutable Ledger Anchoring',
     content: 'Step 4: The finalized AI JSON object is recursively hashed (SHA-256) and anchored directly into the Ethereum blockchain via Smart Contract, minting an absolutely tamper-proof NFT.',
@@ -76,7 +76,7 @@ export const tourScript = [
   // ACT V: Ledger Tracking
   {
     id: 8,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-records-grid',
     title: 'The Master Registry',
     content: 'A live query of every NFT currently existing on the smart contract. Our contract supports cryptographic "Burning"—allowing an admin to permanently invalidate and destroy a compromised credential across the global network.',
@@ -85,7 +85,7 @@ export const tourScript = [
   // ACT VI: Bulk Data Operations
   {
     id: 9,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-batch-upload',
     title: 'Asynchronous Bulk Upload',
     content: 'Uploading hundreds of CSV records bypasses the main blocking thread via background worker processing, implementing robust, line-by-line error mapping for high-scale operations.',
@@ -94,7 +94,7 @@ export const tourScript = [
   // ACT VII: Student Administration
   {
     id: 10,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-student-search',
     title: 'Debounced Queries',
     content: 'Searching the global student ledger triggers debounced, exact-match algorithmic queries secured by deep database Row Level Security (RLS) constraints.',
@@ -102,7 +102,7 @@ export const tourScript = [
   },
   {
     id: 11,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-approval-btn',
     title: 'Asymmetric Wallet Generation',
     content: 'Clicking Approve triggers the highest security subsystem. A unique Ethereum wallet is generated in-memory. The raw private key is instantly heavily encrypted with AES-256 before ever touching persistent storage.',
@@ -111,7 +111,7 @@ export const tourScript = [
   // ACT VIII: Internal System Security
   {
     id: 12,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-activity-logs',
     title: 'Immutable Audit Trail',
     content: 'To prevent rogue administrative actions, every critical API call (Approval, Revocation, Deletion) is permanently locked into an append-only internal audit table.',
@@ -119,7 +119,7 @@ export const tourScript = [
   },
   {
     id: 13,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: 'tour-settings-reissue',
     title: 'Emergency Protocols',
     content: 'The "Reissue All Wallets" system acts as a nuclear failsafe. It batches new AES keys and dispatches temporary secure recovery payloads via AWS SES to all compromised users simultaneously.',
@@ -128,7 +128,7 @@ export const tourScript = [
   // ACT IX: The Student Vault
   {
     id: 14,
-    route: '/admin',
+    route: '/admin-dashboard',
     targetId: null,
     title: 'Transferring Context...',
     content: 'We are now departing the Admin Node. We will cryptographically log in to the Student Gateway to inspect the Web3 endpoint.',
@@ -136,7 +136,7 @@ export const tourScript = [
   },
   {
     id: 15,
-    route: '/student',
+    route: '/student/dashboard',
     targetId: 'tour-student-address',
     title: 'The Web3 Identity',
     content: 'Welcome to the Student Vault. The student controls their Ethereum identity. Everything here operates heavily in the browser engine via PBKDF2 derivation algorithms to decrypt their AES-256 vault client-side.',
@@ -144,7 +144,7 @@ export const tourScript = [
   },
   {
     id: 16,
-    route: '/student',
+    route: '/student/dashboard',
     targetId: 'tour-student-security',
     title: 'Zero-Trust Checklists',
     content: 'To combat social engineering, students MUST conform to zero-trust standards: enforcing Time-Based One Time Passwords (TOTP) and hardware-backed biometric WebAuthn Passkeys.',
