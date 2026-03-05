@@ -23,8 +23,15 @@ const showRegConfirmModal = ref(false)
 const regPreviewRecords = ref([])
 const expandedRow = ref(null)
 
-// Registration Poller
-const { job: regJob, startPolling: startRegPolling, reset: resetRegPoller } = useJobPoller()
+// Registration State (Tracker)
+const showRegProgressTracker = ref(false)
+const activeRegJobId = ref('')
+const batchRegSteps = [
+  { label: 'Parse CSV Data' },
+  { label: 'Verify Student Identity' },
+  { label: 'Create Accounts' },
+  { label: 'Finalize Batch' }
+]
 
 // --- Issuance State
 const issueCsvFile = ref(null)
@@ -33,9 +40,9 @@ const parsedRecords = ref([]) // { id, data: row, image: blob, status, message }
 const zipImages = ref({}) // filename -> blob
 const walletInfo = ref(null)
 
-// Issuance Poller
-const { job: issueJob, startPolling: startIssuePolling, reset: resetIssuePoller } = useJobPoller()
+// Issuance State (Tracker)
 const showIssueProgressTracker = ref(false)
+const activeIssueJobId = ref('')
 const batchIssueSteps = [
   { label: 'Unzip files securely' },
   { label: 'Process records (IPFS & Mint)' }
@@ -126,9 +133,10 @@ const confirmRegistration = async () => {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error)
     
-    // Start polling with the returned jobId
-    startRegPolling(data.jobId, 2500)
-    toast.success('Batch registration started in background!')
+    // Open progress tracker and let it handle polling
+    activeRegJobId.value = data.jobId
+    showRegProgressTracker.value = true
+    toast.success('Batch registration started!')
     
   } catch (err) {
     toast.error(err.message)
@@ -138,33 +146,26 @@ const confirmRegistration = async () => {
   }
 }
 
-// Watch the registration job for completion
-watch(() => regJob.value?.status, (status) => {
-  if (!status) return
+function onRegPipelineComplete(results) {
+  isProcessing.value = false
+  regFile.value = null
+  regPreviewRecords.value = []
 
-  if (status === 'completed' || status === 'failed') {
-    isProcessing.value = false
-    regFile.value = null
-    regPreviewRecords.value = []
-
-    if (regJob.value.result) {
-      const results = regJob.value.result
-      regResults.success = results.success || 0
-      regResults.failed = results.failed || 0
-      regResults.data = results.registered || []
-      regResults.errors = results.errors || []
-      regResults.show = true
-      
-      if (status === 'completed') {
-        toast.success(`Registration finished: ${results.success} successful.`)
-      } else {
-        toast.error(`Registration failed. Check results for errors.`)
-      }
-    } else {
-      toast.error('Registration failed with no output data.')
-    }
+  if (results) {
+    regResults.success = results.success || 0
+    regResults.failed = results.failed || 0
+    regResults.data = results.registered || []
+    regResults.errors = results.errors || []
+    regResults.show = true
+    
+    toast.success(`Registration finished: ${results.success} successful.`)
   }
-})
+}
+
+function onRegPipelineError(error) {
+  isProcessing.value = false
+  toast.error(`Registration failed: ${error || 'Unknown error'}`)
+}
 
 // --- Issuance Logic ---
 const handleIssueCsv = (e) => {
@@ -373,8 +374,8 @@ const issueBatch = async () => {
     
     if (res.ok) {
         const data = await res.json()
+        activeIssueJobId.value = data.jobId
         showIssueProgressTracker.value = true
-        startIssuePolling(data.jobId, 3000)
     } else {
         const d = await res.json()
         throw new Error(d.error)
@@ -385,40 +386,29 @@ const issueBatch = async () => {
   }
 }
 
-// Watch issuance job
-watch(() => issueJob.value?.status, (status) => {
-  if (!status) return
-
-  if (status === 'completed' || status === 'failed') {
-    isProcessing.value = false
-    const results = issueJob.value.result
-    
-    if (results && results.issued && parsedRecords.value) {
-       // Update UI statuses based on results
-       results.issued.forEach(issuedRec => {
-          const uiRec = parsedRecords.value.find(r => r.data.student_id === issuedRec.studentId)
-          if (uiRec) {
-             uiRec.status = 'success'
-             uiRec.message = 'Issued! 🚀'
-          }
-       })
-       if (results.failed) {
-           results.failed.forEach(failedRec => {
-              const uiRec = parsedRecords.value.find(r => r.data.student_id === failedRec.studentId)
-              if (uiRec) {
-                 uiRec.status = 'error'
-                 uiRec.message = failedRec.error || 'Failed'
-              }
-           })
-       }
-    }
+function onIssuePipelineComplete(results) {
+  isProcessing.value = false
+  
+  if (results && results.issued && parsedRecords.value) {
+     // Update UI statuses based on results
+     results.issued.forEach(issuedRec => {
+        const uiRec = parsedRecords.value.find(r => r.data.student_id === issuedRec.studentId)
+        if (uiRec) {
+           uiRec.status = 'success'
+           uiRec.message = 'Issued! 🚀'
+        }
+     })
+     if (results.failed) {
+         results.failed.forEach(failedRec => {
+            const uiRec = parsedRecords.value.find(r => r.data.student_id === failedRec.studentId)
+            if (uiRec) {
+               uiRec.status = 'error'
+               uiRec.message = failedRec.error || 'Failed'
+            }
+         })
+     }
   }
-})
-
-function onIssuePipelineComplete(result) {
-  toast.success(`Batch processing complete. Issued: ${result?.issued?.length || 0}`)
-  showIssueProgressTracker.value = false
-  resetIssuePoller()
+  toast.success(`Batch processing complete. Issued: ${results?.issued?.length || 0}`)
 }
 
 function onIssuePipelineError(error) {
@@ -492,13 +482,16 @@ const closePreview = () => {
              {{ isProcessing ? 'Processing Background Job...' : 'Review & Register' }}
           </button>
 
-          <!-- Job Progress Bar -->
-          <div v-if="isProcessing && regJob?.status === 'processing'" class="mt-6 w-full bg-gray-700 rounded-full h-6 relative overflow-hidden animate-fade-in shadow-inner">
-            <div class="bg-gradient-to-r from-green-500 to-blue-500 h-full transition-all duration-500" :style="{ width: regJob.percentage + '%' }"></div>
-            <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow whitespace-nowrap px-4">
-               {{ regJob.step_label || 'Processing...' }} ({{ regJob.percentage }}%)
-            </div>
-          </div>
+          <!-- Progress Tracker Modal for Registration -->
+          <ProgressTracker
+            :jobId="activeRegJobId"
+            :visible="showRegProgressTracker"
+            windowTitle="batch_register.exe — Student Enrollment Pipeline"
+            :steps="batchRegSteps"
+            @complete="onRegPipelineComplete"
+            @error="onRegPipelineError"
+            @close="showRegProgressTracker = false; activeRegJobId = ''"
+          />
 
           <!-- Confirmation Modal for Registration -->
           <div v-if="showRegConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
@@ -687,14 +680,13 @@ const closePreview = () => {
 
        <!-- Progress Tracker Modal for Issuance -->
        <ProgressTracker
-          v-if="issueJob"
-          :jobId="issueJob.id"
+          :jobId="activeIssueJobId"
           :visible="showIssueProgressTracker"
           windowTitle="batch_issue.exe — Automated Minting Pipeline"
           :steps="batchIssueSteps"
           @complete="onIssuePipelineComplete"
           @error="onIssuePipelineError"
-          @close="showIssueProgressTracker = false; resetIssuePoller()"
+          @close="showIssueProgressTracker = false; activeIssueJobId = ''"
        />
 
        <!-- Estimated Gas Cost -->

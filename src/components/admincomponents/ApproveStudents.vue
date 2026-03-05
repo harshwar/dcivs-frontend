@@ -17,9 +17,7 @@ const isProcessing = ref(null) // ID of student being processed
 const selectedIds = ref(new Set()) // For bulk approve
 const isBulkProcessing = ref(false)
 const showProgressTracker = ref(false)
-
-// Bulk Approval Poller
-const { job: approveJob, startPolling: startApprovePolling, reset: resetApprovePoller } = useJobPoller()
+const activeJobId = ref('')
 
 // IDE Steps for the tracker
 const bulkApproveSteps = [
@@ -87,9 +85,9 @@ async function handleBulkApprove() {
     
     if (res.ok) {
       const data = await res.json()
-      // Open progress tracker and start polling
+      // Open progress tracker and let it handle polling
+      activeJobId.value = data.jobId
       showProgressTracker.value = true
-      startApprovePolling(data.jobId, 2000)
     } else {
       const data = await res.json()
       throw new Error(data.error || 'Bulk approval failed')
@@ -100,31 +98,20 @@ async function handleBulkApprove() {
   }
 }
 
-// Watch bulk approve job
-watch(() => approveJob.value?.status, (status) => {
-  if (!status) return
-
-  if (status === 'completed' || status === 'failed') {
-    isBulkProcessing.value = false
-    const results = approveJob.value.result
-
-    if (results) {
-      if (results.approved && results.approved.length > 0) {
-        // Remove approved students from list
-        pendingStudents.value = pendingStudents.value.filter(s => !results.approved.includes(s.id))
-        selectedIds.value = new Set()
-      }
-    }
-  }
-})
-
 function onPipelineComplete(result) {
+  isBulkProcessing.value = false
+
+  if (result && result.approved && result.approved.length > 0) {
+    // Remove approved students from list
+    pendingStudents.value = pendingStudents.value.filter(s => !result.approved.includes(s.id))
+    selectedIds.value = new Set()
+  }
+
   toast.success(`Bulk approval completed. Approved: ${result?.approved?.length || 0}`)
-  showProgressTracker.value = false
-  resetApprovePoller()
 }
 
 function onPipelineError(error) {
+  isBulkProcessing.value = false
   toast.error(`Bulk approval error: ${error || 'Unknown error'}`)
   // Keep tracker open so they can see logs, they can close manually
 }
@@ -446,14 +433,13 @@ onMounted(fetchPending)
 
     <!-- Progress Tracker (Style 6 IDE) -->
     <ProgressTracker
-      v-if="approveJob"
-      :jobId="approveJob.id"
+      :jobId="activeJobId"
       :visible="showProgressTracker"
       windowTitle="admin.exe — Bulk Appoval Pipeline"
       :steps="bulkApproveSteps"
       @complete="onPipelineComplete"
       @error="onPipelineError"
-      @close="showProgressTracker = false; resetApprovePoller()"
+      @close="showProgressTracker = false; activeJobId = ''"
     />
   </div>
 </template>
