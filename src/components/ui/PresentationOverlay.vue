@@ -72,7 +72,6 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTour } from '../../composables/useTour'
-import { API_BASE_URL } from '../../apiConfig'
 
 const tour = useTour()
 const router = useRouter()
@@ -208,10 +207,10 @@ const updateSpotlight = async () => {
 const currentAudio = ref(null)
 const nextAudioUrl = ref(null)
 
-// --- Neural TTS Logic ---
-// We use a backend proxy to get truly human-sounding voices (Edge Neural TTS)
-const getTTSUrl = (text) => {
-  return `${API_BASE_URL}/api/public/tts?text=${encodeURIComponent(text)}`
+// --- Masterclass Audio Logic ---
+// We use high-quality Gemini 2.0 static assets for zero-latency, zero-cost narration.
+const getAudioUrl = (index) => {
+  return `/audio/tour/step_${index}.mp3`
 }
 
 const speakNative = (text) => {
@@ -222,7 +221,7 @@ const speakNative = (text) => {
   window.speechSynthesis.speak(utterance)
 }
 
-const speak = (text) => {
+const speak = (index) => {
   if (!tour.isVoiceEnabled.value || typeof window === 'undefined') return
 
   // Stop any current audio
@@ -231,20 +230,20 @@ const speak = (text) => {
     currentAudio.value = null
   }
 
-  const audio = new Audio(getTTSUrl(text))
+  const audio = new Audio(getAudioUrl(index))
   currentAudio.value = audio
   
   audio.play().catch(err => {
-    console.warn('Neural TTS failed, falling back to native voice:', err)
-    speakNative(text)
+    console.warn('Static audio failed, falling back to native voice:', err)
+    // Fallback to native synthesis if the file is missing or blocked
+    const step = tour.tourScript[index]
+    if (step) speakNative(`${step.title}. ${step.content}`)
   })
 
-  // Pre-fetch the NEXT step's audio
-  const nextStep = tour.tourScript[currentStepIndex.value + 1]
-  if (nextStep) {
-    const nextText = `${nextStep.title}. ${nextStep.content}`
-    const preload = new Image() 
-    preload.src = getTTSUrl(nextText)
+  // Pre-fetch the NEXT step's audio for zero-latency transitions
+  if (index < totalSteps - 1) {
+    const nextAudio = new Audio(getAudioUrl(index + 1))
+    nextAudio.load()
   }
 }
 
@@ -254,11 +253,9 @@ watch([isActive, currentStepIndex], () => {
   executeStepAction()
   
   // Narrate current step
-  const step = tour.tourScript[currentStepIndex.value]
-  if (step && isActive.value) {
-    const fullText = `${step.title}. ${step.content}`
+  if (isActive.value) {
     // Small delay to ensure the UI has updated first
-    setTimeout(() => speak(fullText), 100)
+    setTimeout(() => speak(currentStepIndex.value), 100)
   }
 })
 
@@ -275,8 +272,7 @@ watch(() => tour.isVoiceEnabled.value, (newVal) => {
   if (!newVal && currentAudio.value) {
     currentAudio.value.pause()
   } else if (newVal && isActive.value) {
-    const step = tour.tourScript[currentStepIndex.value]
-    if (step) speak(`${step.title}. ${step.content}`)
+    speak(currentStepIndex.value)
   }
 })
 
