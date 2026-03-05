@@ -95,6 +95,17 @@
       @close="showConfirmationModal = false"
       @confirm="confirmIssuance"
     />
+
+    <!-- Progress Tracker (Style 6 IDE) -->
+    <ProgressTracker
+      :jobId="activeJobId"
+      :visible="showProgressTracker"
+      windowTitle="pipeline.exe — Certificate Issuance"
+      :steps="pipelineSteps"
+      @complete="onPipelineComplete"
+      @error="onPipelineError"
+      @close="showProgressTracker = false; activeJobId = ''"
+    />
   </div>
 </template>
 
@@ -103,6 +114,7 @@ import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue'
 import CustomSelect from '../ui/CustomSelect.vue'
 import FileUpload from '../ui/FileUpload.vue'
 import IssuanceConfirmationModal from './IssuanceConfirmationModal.vue'
+import ProgressTracker from '../ui/ProgressTracker.vue'
 import { useToast } from '../../composables/useToast.js'
 import { API_BASE_URL } from '../../apiConfig'
 import { standardizeFileToPNG } from '../../utils/fileStandardizer.js'
@@ -124,6 +136,16 @@ const isIssuing = ref(false) // Loading state for the submit button
 const isConverting = ref(false) // Loading state for file standardization
 const isScanning = ref(false) // Loading state for AI scanning
 const showConfirmationModal = ref(false) // Modal visibility
+const showProgressTracker = ref(false) // Progress tracker overlay
+const activeJobId = ref('') // Current polling job
+
+const pipelineSteps = [
+  { label: 'Fetch Wallet' },
+  { label: 'Pin to IPFS' },
+  { label: 'Pin Metadata' },
+  { label: 'Mint NFT' },
+  { label: 'Save & Notify' }
+]
 
 const autoVerifiedMatch = ref(null);
 const autoExtractedText = ref('');
@@ -299,50 +321,52 @@ async function issueCertificate() {
  * Called when user verifies details in the modal
  */
 async function confirmIssuance() {
-  showConfirmationModal.value = false // Close modal immediately or keep open? Better keep open to show loading?
-  // Actually the modal has a loading state. Let's keep it open and handle loading there.
-  
-  // Enable loading UI
+  showConfirmationModal.value = false
   isIssuing.value = true
 
-  // --- Prepare Data for Upload ---
-  // Using FormData is required for sending files (binary data) via HTTP
   const formData = new FormData()
-  formData.append('file', selectedFile.value) // Certificate image
-  formData.append('recipientId', selectedStudentId.value) // Linking to specific student
+  formData.append('file', selectedFile.value)
+  formData.append('recipientId', selectedStudentId.value)
   formData.append('title', title.value) 
   formData.append('description', description.value) 
   formData.append('department', department.value) 
 
   try {
-    // POST request to the issue endpoint
-    const res = await fetch(`${API_BASE_URL}/api/nft/issue`, {
+    // Call the NEW async endpoint — returns jobId immediately
+    const res = await fetch(`${API_BASE_URL}/api/nft/start-issue`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('adminToken') || localStorage.getItem('token')}`
-        // Note: Content-Type is intentionally omitted here as FormData sets it automatically
       },
       body: formData
     })
 
     const data = await res.json()
     
-    // Check status
-    if (res.ok) {
-      // Notify admin of success and show blockchain proof
-      toast.success(`Record Registered!\nTx Hash: ${data.nft.transactionHash}`)
-      resetForm() // Clear the form for the next issuance
+    if (res.ok && data.jobId) {
+      // Open the progress tracker with the jobId
+      activeJobId.value = data.jobId
+      showProgressTracker.value = true
+      isIssuing.value = false
     } else {
-      throw new Error(data.error || 'Failed to issue NFT')
+      throw new Error(data.error || 'Failed to start issuance')
     }
   } catch (err) {
     console.error('Issue error:', err)
     toast.error(`Error: ${err.message}`)
-  } finally {
-    // Disable loading UI
     isIssuing.value = false
-    showConfirmationModal.value = false
   }
+}
+
+/** Called when ProgressTracker reports pipeline success */
+function onPipelineComplete(result) {
+  toast.success(`Record Registered!\nTx: ${result?.transactionHash || 'Success'}\nToken #${result?.tokenId || ''}`)
+  resetForm()
+}
+
+/** Called when ProgressTracker reports pipeline failure */
+function onPipelineError(error) {
+  toast.error(`Pipeline Error: ${error || 'Unknown error'}`)
 }
 
 /**
