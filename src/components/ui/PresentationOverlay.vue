@@ -202,55 +202,38 @@ const updateSpotlight = async () => {
   }, 300) // slight delay allows animations/renders to finish
 }
 
-const currentVoice = ref(null)
+const currentAudio = ref(null)
+const nextAudioUrl = ref(null)
 
-// --- Speech Synthesis Logic ---
-const findBestVoice = (voices) => {
-  // Priority 1: High-quality Neural/Natural voices (Edge/Windows 11)
-  const premium = voices.find(v => (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Online')) && v.lang.startsWith('en'))
-  if (premium) return premium
-
-  // Priority 2: Google Premium voices (Chrome)
-  const google = voices.find(v => v.name.includes('Google US English') || v.name.includes('Google UK English'))
-  if (google) return google
-
-  // Priority 3: Standard English voices (Avoiding "David" if possible as he is very metallic)
-  const zira = voices.find(v => v.name.includes('Zira') || v.name.includes('Siri'))
-  if (zira) return zira
-
-  return voices.find(v => v.lang.startsWith('en'))
+// --- Neural TTS Logic ---
+// We use a backend proxy to get truly human-sounding voices (Edge Neural TTS)
+const getTTSUrl = (text) => {
+  const API_BASE = 'http://localhost:3001/api/public' // Standard backend URL
+  return `${API_BASE}/tts?text=${encodeURIComponent(text)}`
 }
 
 const speak = (text) => {
-  if (!tour.isVoiceEnabled.value || typeof window === 'undefined' || !window.speechSynthesis) return
+  if (!tour.isVoiceEnabled.value || typeof window === 'undefined') return
 
-  window.speechSynthesis.cancel()
+  // Stop any current audio
+  if (currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value = null
+  }
 
-  const utterance = new SpeechSynthesisUtterance(text)
-  const voices = window.speechSynthesis.getVoices()
+  const audio = new Audio(getTTSUrl(text))
+  currentAudio.value = audio
   
-  if (!currentVoice.value && voices.length > 0) {
-    currentVoice.value = findBestVoice(voices)
-    console.log('🎙️ Narrator Voice Selected:', currentVoice.value?.name)
-  }
+  audio.play().catch(err => {
+    console.warn('TTS Playback failed:', err)
+  })
 
-  if (currentVoice.value) {
-    utterance.voice = currentVoice.value
-    
-    // Adjust rate/pitch based on voice quality
-    const isPremium = currentVoice.value.name.includes('Natural') || currentVoice.value.name.includes('Online')
-    utterance.rate = isPremium ? 1.0 : 0.88 // Standard voices sound better when slowed down
-    utterance.pitch = isPremium ? 1.0 : 1.05 // Tiny pitch bump to reduce "metallic" bass in old voices
-  }
-
-  utterance.volume = 1.0
-  window.speechSynthesis.speak(utterance)
-}
-
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    const voices = window.speechSynthesis.getVoices()
-    currentVoice.value = findBestVoice(voices)
+  // Pre-fetch the NEXT step's audio to ensure zero-latency when user clicks next
+  const nextStep = tour.tourScript[currentStepIndex.value + 1]
+  if (nextStep) {
+    const nextText = `${nextStep.title}. ${nextStep.content}`
+    const preload = new Image() // Trick to force browser cache for audio URL
+    preload.src = getTTSUrl(nextText)
   }
 }
 
@@ -270,15 +253,16 @@ watch([isActive, currentStepIndex], () => {
 
 // Stop speaking if tour is closed
 watch(isActive, (newVal) => {
-  if (!newVal && typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel()
+  if (!newVal && currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value = null
   }
 })
 
 // Handle Mute/Unmute
 watch(() => tour.isVoiceEnabled.value, (newVal) => {
-  if (!newVal && typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel()
+  if (!newVal && currentAudio.value) {
+    currentAudio.value.pause()
   } else if (newVal && isActive.value) {
     const step = tour.tourScript[currentStepIndex.value]
     if (step) speak(`${step.title}. ${step.content}`)
