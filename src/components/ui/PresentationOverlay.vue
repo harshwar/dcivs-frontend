@@ -72,6 +72,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTour } from '../../composables/useTour'
+import { API_BASE_URL } from '../../apiConfig'
 
 const tour = useTour()
 const router = useRouter()
@@ -210,8 +211,7 @@ const nextAudioUrl = ref(null)
 // --- Neural TTS Logic ---
 // We use a backend proxy to get truly human-sounding voices (Edge Neural TTS)
 const getTTSUrl = (text) => {
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-  return `${API_BASE}/api/public/tts?text=${encodeURIComponent(text)}`
+  return `${API_BASE_URL}/api/public/tts?text=${encodeURIComponent(text)}`
 }
 
 const speakNative = (text) => {
