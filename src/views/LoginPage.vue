@@ -15,7 +15,7 @@
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-2 transition-colors" data-particle-target="detail">Student Login</h1>
           <p class="text-gray-600 dark:text-gray-400 text-center mb-8 transition-colors">Access your academic wallet</p>
 
-          <form @submit.prevent="handleLogin" class="space-y-6">
+          <form id="tour-login-form-student" @submit.prevent="handleLogin" class="space-y-6">
             
             <!-- Email -->
             <div>

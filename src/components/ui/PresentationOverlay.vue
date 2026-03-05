@@ -202,23 +202,25 @@ const executeStepAction = async () => {
 
   // Example: Fire custom events that the actual pages listen for, OR manipulate DOM directly.
   if (action === 'adminLogin') {
-    // We physically fill the login fields and click the button
-    const emailInput = document.querySelector('input[type="email"]')
-    const passInput = document.querySelector('input[type="password"]')
     const loginForm = document.getElementById('tour-login-btn')
     
-    if (emailInput && passInput && loginForm) {
-      emailInput.value = 'demo_admin@system.com'
-      emailInput.dispatchEvent(new Event('input', { bubbles: true }))
-      
-      passInput.value = 'AdminDemo2026!'
-      passInput.dispatchEvent(new Event('input', { bubbles: true }))
-      
+    // Fill form if possible
+    const emailInput = document.querySelector('input[type="email"]')
+    const passInput = document.querySelector('input[type="password"]')
+    
+    if (emailInput && passInput) {
+       emailInput.value = 'demo_admin@system.com'
+       emailInput.dispatchEvent(new Event('input', { bubbles: true }))
+       passInput.value = 'AdminDemo2026!'
+       passInput.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+
+    if (loginForm) {
       setTimeout(() => loginForm.click(), 500)
     }
-  } 
-  else if (action === 'studentLogin') {
-    // Ensure we trigger a logout then navigate properly
+  }
+  else if (action === 'goToStudentLogin') {
+    // Just logout and navigate
     document.dispatchEvent(new CustomEvent('tour-force-logout'))
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -226,26 +228,26 @@ const executeStepAction = async () => {
     localStorage.removeItem('adminUser')
     
     setTimeout(() => {
-      // Force navigation if not already there
-      window.location.href = '/login'
-      
-      setTimeout(() => {
-        const emailInput = document.querySelector('input[type="email"]')
-        const passInput = document.querySelector('input[type="password"]')
-        // Login page usually has a primary submit button
-        const loginForm = document.querySelector('form button[type="submit"]')
-        
-        if (emailInput && passInput && loginForm) {
-          emailInput.value = 'demo_student@system.com'
-          emailInput.dispatchEvent(new Event('input', { bubbles: true }))
-          
-          passInput.value = 'StudentDemo2026!'
-          passInput.dispatchEvent(new Event('input', { bubbles: true }))
-          
-          setTimeout(() => loginForm.click(), 500)
-        }
-      }, 1000)
+      tour.router.push('/login')
+      // Auto-advance is handled by the route watcher
     }, 500)
+  }
+  else if (action === 'studentLoginExec') {
+    // Expects to be on /login already
+    const emailInput = document.querySelector('#tour-login-form-student input[type="email"]')
+    const passInput = document.querySelector('#tour-login-form-student input[type="password"]')
+    // Ensure we are selecting the general sign in button
+    const loginBtn = document.querySelector('#tour-login-form-student button.btn-primary')
+    
+    if (emailInput && passInput && loginBtn) {
+      emailInput.value = 'demo_student@system.com'
+      emailInput.dispatchEvent(new Event('input', { bubbles: true }))
+      
+      passInput.value = 'StudentDemo2026!'
+      passInput.dispatchEvent(new Event('input', { bubbles: true }))
+      
+      setTimeout(() => loginBtn.click(), 500)
+    }
   }
   else if (action === 'goVerify') {
     const input = document.querySelector('#tour-verify-form input')
@@ -259,7 +261,19 @@ const executeStepAction = async () => {
   else if (action.startsWith('setTab')) {
     // E.g. setTabHealth -> emit an event AdminDashboard.vue listens to to switch tabs
     const tabName = action.replace('setTab', '').toLowerCase()
-    document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: tabName }))
+    
+    // Special case for approvals: we need to select students AFTER tab switch
+    if (action === 'setTabApprovalsAndSelect') {
+      document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: 'approvals' }))
+      
+      // Give it time to render the new component
+      setTimeout(() => {
+        const checkbox = document.getElementById('select-all-students')
+        if (checkbox) checkbox.click()
+      }, 800)
+    } else {
+      document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: tabName }))
+    }
   }
 }
 

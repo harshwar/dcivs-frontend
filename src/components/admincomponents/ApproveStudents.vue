@@ -277,7 +277,7 @@ onMounted(fetchPending)
     <!-- Student List -->
     <div v-else class="grid grid-cols-1 gap-4">
       <!-- Select All header -->
-      <div class="flex items-center gap-3 px-2">
+      <div id="select-all-parents" class="flex items-center gap-3 px-2">
         <input
           type="checkbox"
           :checked="allSelected"

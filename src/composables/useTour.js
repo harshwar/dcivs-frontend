@@ -103,14 +103,22 @@ export const tourScript = [
   {
     id: 11,
     route: '/admin-dashboard',
+    targetId: 'select-all-parents', // Targeting the select all checkbox area
+    title: 'Identity Verification',
+    content: 'Let\'s select a verified identity to initiate the wallet issuance protocol.',
+    action: 'setTabApprovalsAndSelect'
+  },
+  {
+    id: 12,
+    route: '/admin-dashboard',
     targetId: 'tour-approval-btn',
     title: 'Asymmetric Wallet Generation',
     content: 'Clicking Approve triggers the highest security subsystem. A unique Ethereum wallet is generated in-memory. The raw private key is instantly heavily encrypted with AES-256 before ever touching persistent storage.',
-    action: 'setTabApprovals'
+    action: null
   },
   // ACT VIII: Internal System Security
   {
-    id: 12,
+    id: 13,
     route: '/admin-dashboard',
     targetId: 'tour-activity-logs',
     title: 'Immutable Audit Trail',
@@ -118,24 +126,33 @@ export const tourScript = [
     action: 'setTabLogs'
   },
   {
-    id: 13,
+    id: 14,
     route: '/admin-dashboard',
     targetId: 'tour-settings-reissue',
     title: 'Emergency Protocols',
     content: 'The "Reissue All Wallets" system acts as a nuclear failsafe. It batches new AES keys and dispatches temporary secure recovery payloads via AWS SES to all compromised users simultaneously.',
     action: 'setTabSettings'
   },
-  // ACT IX: The Student Vault
-  {
-    id: 14,
-    route: '/admin-dashboard',
-    targetId: null,
-    title: 'Transferring Context...',
-    content: 'We are now departing the Admin Node. We will cryptographically log in to the Student Gateway to inspect the Web3 endpoint.',
-    action: 'studentLogin'
-  },
+  // ACT IX: The Transition
   {
     id: 15,
+    route: '/admin-dashboard',
+    targetId: null,
+    title: 'Departing Admin Node',
+    content: 'We are now departing the Admin Node. We will cryptographically log in to the Student Gateway to inspect the Web3 identity layer.',
+    action: 'goToStudentLogin'
+  },
+  // ACT X: Student Gateway
+  {
+    id: 16,
+    route: '/login',
+    targetId: 'tour-login-form-student',
+    title: 'Student Gateway',
+    content: 'Let\'s authenticate as a student to see the private secure vault. Notice the same security perimeter applies here.',
+    action: 'studentLoginExec'
+  },
+  {
+    id: 17,
     route: '/student/dashboard',
     targetId: 'tour-student-address',
     title: 'The Web3 Identity',
@@ -143,16 +160,16 @@ export const tourScript = [
     action: null
   },
   {
-    id: 16,
+    id: 18,
     route: '/student/dashboard',
     targetId: 'tour-student-security',
     title: 'Zero-Trust Checklists',
     content: 'To combat social engineering, students MUST conform to zero-trust standards: enforcing Time-Based One Time Passwords (TOTP) and hardware-backed biometric WebAuthn Passkeys.',
     action: null
   },
-  // ACT X: Public Verification
+  // ACT XI: Public Verification
   {
-    id: 17,
+    id: 19,
     route: '/verify',
     targetId: 'tour-verify-form',
     title: 'Public Cryptographic Proof',
