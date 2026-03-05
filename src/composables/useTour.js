@@ -236,6 +236,7 @@ export function useTour() {
     stopTour,
     nextStep,
     prevStep,
-    loadState
+    loadState,
+    router
   }
 }

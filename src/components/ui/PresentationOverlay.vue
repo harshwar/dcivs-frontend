@@ -84,8 +84,7 @@ const spotlightStyle = computed(() => {
       left: '50%',
       width: '0px',
       height: '0px',
-      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.85)',
-      backdropFilter: 'blur(4px)'
+      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.85)'
     }
   }
 
@@ -96,8 +95,7 @@ const spotlightStyle = computed(() => {
     left: `${targetRect.value.left - padding}px`,
     width: `${targetRect.value.width + padding * 2}px`,
     height: `${targetRect.value.height + padding * 2}px`,
-    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.85)',
-    backdropFilter: 'blur(4px)'
+    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.85)'
   }
 })
 
@@ -179,6 +177,21 @@ const handleResize = () => {
   windowSize.value = { width: window.innerWidth, height: window.innerHeight }
   updateSpotlight()
 }
+
+// Watch for route changes to auto-advance if we land on the "next" page automatically (e.g. after login)
+watch(() => router.currentRoute.value.path, (newPath) => {
+  if (isActive.value) {
+    const currentConfig = tour.tourScript[currentStepIndex.value]
+    if (currentConfig && newPath !== currentConfig.route) {
+       // Check if this new path matches the NEXT step
+       const nextConfig = tour.tourScript[currentStepIndex.value + 1]
+       if (nextConfig && newPath === nextConfig.route) {
+          // slight delay to let the page settle
+          setTimeout(() => tour.nextStep(), 500)
+       }
+    }
+  }
+})
 
 // Action Handlers
 const executeStepAction = async () => {
