@@ -53,8 +53,8 @@
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
             Standardizing Format...
           </span>
-          <!-- AI Scan Loader (Simple Text when scanning starts but poller hasn't fetched yet) -->
-          <span v-if="isScanning && !scanJob" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
+          <!-- AI Scan Loader (Simple Text when scanning starts but waiting for tracker) -->
+          <span v-if="isScanning" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
             Connecting to AI Server...
           </span>
@@ -100,12 +100,13 @@
 
     <!-- Progress Tracker (Style 6 IDE) for AI Scanning -->
     <ProgressTracker
-      v-if="scanJob"
-      :jobId="scanJob.id"
+      :jobId="activeScanJobId"
       :visible="showScanProgressTracker"
       windowTitle="scan.exe — AI Verification"
       :steps="scanSteps"
-      @close="showScanProgressTracker = false; resetScanPoller()"
+      @complete="onScanComplete"
+      @error="onScanError"
+      @close="showScanProgressTracker = false; activeScanJobId = ''"
     />
 
     <!-- Progress Tracker (Style 6 IDE) -->
@@ -135,9 +136,6 @@ import { useJobPoller } from '../../composables/useJobPoller'
 
 const toast = useToast()
 
-// Scan poller (separate from issuance poller)
-const { job: scanJob, startPolling: startScanPolling, reset: resetScanPoller } = useJobPoller()
-
 // Component props (not heavily used here but available for extensibility)
 const props = defineProps(['apiBase']) 
 
@@ -153,10 +151,10 @@ const isIssuing = ref(false) // Loading state for the submit button
 const isConverting = ref(false) // Loading state for file standardization
 const isScanning = ref(false) // Loading state for AI scanning
 const showConfirmationModal = ref(false) // Modal visibility
-const showProgressTracker = ref(false) // Progress tracker overlay
-const activeJobId = ref('') // Current polling job
+const activeJobId = ref('') // Current polling job for async issuance
 
 const showScanProgressTracker = ref(false) // Progress tracker for scanning
+const activeScanJobId = ref('') // Current polling job for AI scan
 const scanSteps = [
   { label: 'Initialize Vision' },
   { label: 'Extract Text (OCR)' },
@@ -222,9 +220,8 @@ async function scanCertificate(file) {
     
     if (res.ok) {
       const { jobId } = await res.json();
-      // Start polling for scan results
+      activeScanJobId.value = jobId;
       showScanProgressTracker.value = true;
-      startScanPolling(jobId, 2000);
     } else {
       throw new Error('Scan request failed');
     }
@@ -235,72 +232,67 @@ async function scanCertificate(file) {
   }
 }
 
-// Watch the scan job for completion
-watch(() => scanJob.value?.status, (status) => {
-  if (!status) return;
+function onScanComplete(data) {
+  isScanning.value = false;
 
-  if (status === 'completed' && scanJob.value?.result) {
-    const data = scanJob.value.result;
-    isScanning.value = false;
+  // Store verification results
+  autoVerifiedMatch.value = data.match;
+  autoExtractedText.value = data.extracted_text || '';
 
-    // Store verification results
-    autoVerifiedMatch.value = data.match;
-    autoExtractedText.value = data.extracted_text || '';
+  // Auto-fill fields if they are currently empty
+  if (!title.value && data.title) title.value = data.title;
+  if (!department.value && data.department) department.value = data.department;
+  if (!description.value && data.description) description.value = data.description;
+  
+  // If we did a blind scan (no student selected), attempt to auto-match
+  if (!selectedStudentId.value && data.raw_text) {
+    const rawText = data.raw_text.toLowerCase();
+    let matchedStudent = null;
 
-    // Auto-fill fields if they are currently empty
-    if (!title.value && data.title) title.value = data.title;
-    if (!department.value && data.department) department.value = data.department;
-    if (!description.value && data.description) description.value = data.description;
-    
-    // If we did a blind scan (no student selected), attempt to auto-match
-    if (!selectedStudentId.value && data.raw_text) {
-      const rawText = data.raw_text.toLowerCase();
-      let matchedStudent = null;
-
-      // Pass 1: Strict Check for Exact Roll Number
-      for (const student of students.value) {
-        if (student.roll && rawText.includes(student.roll.toLowerCase())) {
-          matchedStudent = student;
-          break;
-        }
-      }
-
-      // Pass 2: Fallback check for fuzzy Full Name match
-      if (!matchedStudent) {
-        for (const student of students.value) {
-          if (student.name) {
-            const nameParts = student.name.toLowerCase().split(' ').filter(p => p.length > 2);
-            const allPartsFound = nameParts.length > 0 && nameParts.every(part => rawText.includes(part));
-            if (allPartsFound) {
-              matchedStudent = student;
-              break;
-            }
-          }
-        }
-      }
-
-      if (matchedStudent) {
-        selectedStudentId.value = matchedStudent.id;
-        autoVerifiedMatch.value = true;
-        toast.success(`Identity auto-detected: ${matchedStudent.name}! ✨`);
-      } else {
-        toast.warning('AI Scan Complete, but could not auto-identify student. Please select manually.');
-      }
-    } else {
-      if (data.match) {
-        toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
-      } else if (selectedStudentId.value) {
-        toast.warning('AI Scan Complete, but could not mathematically verify the selected student identity.');
-      } else {
-        toast.success('AI Scan Complete: Extracted details successfully.');
+    // Pass 1: Strict Check for Exact Roll Number
+    for (const student of students.value) {
+      if (student.roll && rawText.includes(student.roll.toLowerCase())) {
+        matchedStudent = student;
+        break;
       }
     }
 
-  } else if (status === 'failed') {
-    isScanning.value = false;
-    toast.error('AI Scanning failed. Please view terminal details.');
+    // Pass 2: Fallback check for fuzzy Full Name match
+    if (!matchedStudent) {
+      for (const student of students.value) {
+        if (student.name) {
+          const nameParts = student.name.toLowerCase().split(' ').filter(p => p.length > 2);
+          const allPartsFound = nameParts.length > 0 && nameParts.every(part => rawText.includes(part));
+          if (allPartsFound) {
+            matchedStudent = student;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matchedStudent) {
+      selectedStudentId.value = matchedStudent.id;
+      autoVerifiedMatch.value = true;
+      toast.success(`Identity auto-detected: ${matchedStudent.name}! ✨`);
+    } else {
+      toast.warning('AI Scan Complete, but could not auto-identify student. Please select manually.');
+    }
+  } else {
+    if (data.match) {
+      toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
+    } else if (selectedStudentId.value) {
+      toast.warning('AI Scan Complete, but could not mathematically verify the selected student identity.');
+    } else {
+      toast.success('AI Scan Complete: Extracted details successfully.');
+    }
   }
-});
+}
+
+function onScanError(error) {
+  isScanning.value = false;
+  toast.error(`AI Scanning failed: ${error || 'Please view terminal details.'}`);
+}
 
 const selectedStudent = computed(() => students.value.find(s => s.id === selectedStudentId.value))
 
