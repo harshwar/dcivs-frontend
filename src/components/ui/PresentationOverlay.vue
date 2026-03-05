@@ -233,13 +233,25 @@ const speak = (index) => {
   const audio = new Audio(getAudioUrl(index))
   currentAudio.value = audio
   
-  audio.play().catch(err => {
-    console.warn('Static audio failed, falling back to native voice:', err)
-    // Fallback to native synthesis if the file is missing or blocked
-    const step = tour.tourScript[index]
-    if (step) speakNative(`${step.title}. ${step.content}`)
-  })
+  // Return a promise that resolves when the audio ends or fails
+  return new Promise((resolve) => {
+    audio.onended = () => resolve(true)
+    audio.onerror = () => resolve(false)
+    
+    audio.play().catch(err => {
+      console.warn('Static audio failed, falling back to native voice:', err)
+      // Fallback to native synthesis if the file is missing or blocked
+      const step = tour.tourScript[index]
+      if (step) speakNative(`${step.title}. ${step.content}`)
+      resolve(false)
+    })
 
+    // Safety timeout (don't hang if audio fails to play properly)
+    setTimeout(() => resolve(false), 15000)
+  })
+}
+
+const preloadNext = (index) => {
   // Pre-fetch the NEXT step's audio for zero-latency transitions
   if (index < totalSteps - 1) {
     const nextAudio = new Audio(getAudioUrl(index + 1))
@@ -248,14 +260,23 @@ const speak = (index) => {
 }
 
 // Watchers
-watch([isActive, currentStepIndex], () => {
+watch([isActive, currentStepIndex], async () => {
   updateSpotlight()
-  executeStepAction()
   
   // Narrate current step
   if (isActive.value) {
-    // Small delay to ensure the UI has updated first
-    setTimeout(() => speak(currentStepIndex.value), 100)
+    // Wait a tick for DOM to settle
+    await nextTick()
+    
+    // 1. Kick off preload for NEXT audio immediately to overlap network loading
+    preloadNext(currentStepIndex.value)
+    
+    // 2. Wait for current voiceover to finish (or timeout/err) BEFORE triggering page actions
+    // This solves the issue of the page changing before the explanation is over.
+    await speak(currentStepIndex.value)
+    
+    // 3. Voice is done, now we can fire site-logic actions (like logging in)
+    executeStepAction()
   }
 })
 
