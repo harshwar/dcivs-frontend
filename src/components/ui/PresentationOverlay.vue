@@ -70,9 +70,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTour } from '../../composables/useTour'
 
 const tour = useTour()
+const router = useRouter()
 const isActive = tour.isActive
 const currentStepIndex = tour.currentStepIndex
 const totalSteps = tour.tourScript.length
@@ -208,8 +210,16 @@ const nextAudioUrl = ref(null)
 // --- Neural TTS Logic ---
 // We use a backend proxy to get truly human-sounding voices (Edge Neural TTS)
 const getTTSUrl = (text) => {
-  const API_BASE = 'http://localhost:3001/api/public' // Standard backend URL
-  return `${API_BASE}/tts?text=${encodeURIComponent(text)}`
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+  return `${API_BASE}/api/public/tts?text=${encodeURIComponent(text)}`
+}
+
+const speakNative = (text) => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.rate = 0.9
+  window.speechSynthesis.speak(utterance)
 }
 
 const speak = (text) => {
@@ -225,14 +235,15 @@ const speak = (text) => {
   currentAudio.value = audio
   
   audio.play().catch(err => {
-    console.warn('TTS Playback failed:', err)
+    console.warn('Neural TTS failed, falling back to native voice:', err)
+    speakNative(text)
   })
 
-  // Pre-fetch the NEXT step's audio to ensure zero-latency when user clicks next
+  // Pre-fetch the NEXT step's audio
   const nextStep = tour.tourScript[currentStepIndex.value + 1]
   if (nextStep) {
     const nextText = `${nextStep.title}. ${nextStep.content}`
-    const preload = new Image() // Trick to force browser cache for audio URL
+    const preload = new Image() 
     preload.src = getTTSUrl(nextText)
   }
 }
