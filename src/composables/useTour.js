@@ -70,7 +70,7 @@ export const tourScript = [
     route: "/admin-dashboard",
     targetId: "tour-issue-form",
     title: "Zero-Trust Processing",
-    content: "Step 2: A local Tesseract engine extracts characters. Step 3: Crucially, our mathematical string-similarity algorithms scrub Personally Identifiable Information (Name, Roll No.) before the sanitized payload hits external Gemini AI for final mapping.",
+    content: "Step 2. The local Tesseract engine extracts every character. Step 3. Crucially, our mathematical similarity algorithms scrub all sensitive information... like names and I-D numbers... before the sanitized data hits the Gemini A-I for final mapping.",
     action: "setTabIssue"
   },
   {
@@ -78,7 +78,7 @@ export const tourScript = [
     route: "/admin-dashboard",
     targetId: "tour-issue-btn",
     title: "Immutable Ledger Anchoring",
-    content: "Step 4: The finalized AI JSON object is recursively hashed (SHA-256) and anchored directly into the Ethereum blockchain via Smart Contract, minting an absolutely tamper-proof NFT.",
+    content: "Step 4. The finalized A-I data is recursively hashed and anchored directly into the Ethereum blockchain via Smart Contract... minting an absolutely tamper-proof N-F-T.",
     action: "setTabIssue"
   },
   // ACT V: Ledger Tracking
@@ -138,7 +138,7 @@ export const tourScript = [
     route: "/admin-dashboard",
     targetId: "tour-settings-reissue",
     title: "Emergency Protocols",
-    content: "The \"Reissue All Wallets\" system acts as a nuclear failsafe. It batches new AES keys and dispatches temporary secure recovery payloads via AWS SES to all compromised users simultaneously.",
+    content: "The, Reissue All Wallets system, acts as a nuclear failsafe. It batches new security keys and dispatches temporary recovery payloads via Amazon S-E-S... to all compromised users simultaneously.",
     action: "setTabSettings"
   },
   // ACT IX: The Transition
@@ -172,7 +172,7 @@ export const tourScript = [
     route: "/student/dashboard",
     targetId: "tour-student-security",
     title: "Zero-Trust Checklists",
-    content: "To combat social engineering, students MUST conform to zero-trust standards: enforcing Time-Based One Time Passwords (TOTP) and hardware-backed biometric WebAuthn Passkeys.",
+    content: "To combat social engineering, students must conform to zero-trust standards... enforcing Time-Based One Time Passwords, and hardware-backed biometric, Web Auth-N, Pass-keys.",
     action: null
   },
   // ACT XI: Public Verification

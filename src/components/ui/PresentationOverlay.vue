@@ -205,41 +205,52 @@ const updateSpotlight = async () => {
 const currentVoice = ref(null)
 
 // --- Speech Synthesis Logic ---
+const findBestVoice = (voices) => {
+  // Priority 1: High-quality Neural/Natural voices (Edge/Windows 11)
+  const premium = voices.find(v => (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Online')) && v.lang.startsWith('en'))
+  if (premium) return premium
+
+  // Priority 2: Google Premium voices (Chrome)
+  const google = voices.find(v => v.name.includes('Google US English') || v.name.includes('Google UK English'))
+  if (google) return google
+
+  // Priority 3: Standard English voices (Avoiding "David" if possible as he is very metallic)
+  const zira = voices.find(v => v.name.includes('Zira') || v.name.includes('Siri'))
+  if (zira) return zira
+
+  return voices.find(v => v.lang.startsWith('en'))
+}
+
 const speak = (text) => {
   if (!tour.isVoiceEnabled.value || typeof window === 'undefined' || !window.speechSynthesis) return
 
-  // Cancel any ongoing speech
   window.speechSynthesis.cancel()
 
   const utterance = new SpeechSynthesisUtterance(text)
-  
-  // Try to find a high-quality voice
   const voices = window.speechSynthesis.getVoices()
-  if (voices.length > 0 && !currentVoice.value) {
-    // Priority: Natural/Neural -> Google US English -> First English voice
-    currentVoice.value = voices.find(v => v.name.includes('Natural') || v.name.includes('Neural')) ||
-                        voices.find(v => v.name.includes('Google US English')) ||
-                        voices.find(v => v.lang.startsWith('en'))
+  
+  if (!currentVoice.value && voices.length > 0) {
+    currentVoice.value = findBestVoice(voices)
+    console.log('🎙️ Narrator Voice Selected:', currentVoice.value?.name)
   }
 
   if (currentVoice.value) {
     utterance.voice = currentVoice.value
+    
+    // Adjust rate/pitch based on voice quality
+    const isPremium = currentVoice.value.name.includes('Natural') || currentVoice.value.name.includes('Online')
+    utterance.rate = isPremium ? 1.0 : 0.88 // Standard voices sound better when slowed down
+    utterance.pitch = isPremium ? 1.0 : 1.05 // Tiny pitch bump to reduce "metallic" bass in old voices
   }
 
-  utterance.rate = 0.95 // Slightly slower for better clarity
-  utterance.pitch = 1.0
   utterance.volume = 1.0
-
   window.speechSynthesis.speak(utterance)
 }
 
-// Ensure voices are loaded (browsers load them async)
 if (typeof window !== 'undefined' && window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => {
     const voices = window.speechSynthesis.getVoices()
-    currentVoice.value = voices.find(v => v.name.includes('Natural') || v.name.includes('Neural')) ||
-                        voices.find(v => v.name.includes('Google US English')) ||
-                        voices.find(v => v.lang.startsWith('en'))
+    currentVoice.value = findBestVoice(voices)
   }
 }
 
