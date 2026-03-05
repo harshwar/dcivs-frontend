@@ -21,6 +21,7 @@
 
           <!-- FORM -->
           <form
+             id="tour-login-form"
             @submit.prevent="handleAdminLogin"
             class="px-6 py-5 space-y-5"
           >
@@ -56,6 +57,7 @@
 
             <!-- ACTION -->
             <button
+               id="tour-login-btn"
               type="submit"
               :disabled="isLoading"
               class="btn-primary w-full"

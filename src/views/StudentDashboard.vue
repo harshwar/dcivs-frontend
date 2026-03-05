@@ -109,7 +109,7 @@
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Feature 7: Quick Wallet Unlock Widget -->
-        <div class="glass-panel rounded-2xl p-6 border border-transparent transition-all">
+        <div id="tour-student-address" class="glass-panel rounded-2xl p-6 border border-transparent transition-all">
           <h4 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">🔗 Blockchain Wallet</h4>
 
           <!-- No wallet yet -->
@@ -213,7 +213,7 @@
         </div>
 
         <!-- Security Checklist -->
-        <div class="glass-panel rounded-2xl p-6 border border-transparent transition-all">
+        <div id="tour-student-security" class="glass-panel rounded-2xl p-6 border border-transparent transition-all">
           <h4 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">🛡️ Account Security</h4>
           <div class="space-y-2.5">
             <div

@@ -3,8 +3,10 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
+import { useTour } from '../composables/useTour'
 
 const router = useRouter()
+const tour = useTour()
 
 // Scroll animation state
 const sections = ref([])
@@ -119,12 +121,13 @@ function isVisible(sectionId) {
               <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
               <span class="relative">🔍 Inspect an Achievement</span>
             </router-link>
-            <router-link 
-              to="/register" 
-              class="group px-8 py-4 bg-white/80 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl font-bold text-lg text-gray-900 dark:text-white transition-all hover:bg-white dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/30 hover:-translate-y-1 shadow-sm hover:shadow-md"
+            <button 
+               @click="tour.startTour()"
+              class="group px-8 py-4 bg-white/80 dark:bg-white/5 border border-indigo-200 dark:border-indigo-500/30 rounded-xl font-bold text-lg text-indigo-700 dark:text-indigo-300 transition-all hover:bg-white dark:hover:bg-indigo-500/10 hover:-translate-y-1 shadow-sm hover:shadow-indigo-500/20 flex items-center justify-center gap-2"
             >
-              Register Now
-            </router-link>
+              <svg class="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"></path></svg>
+              Run Platform Demo
+            </button>
           </div>
         </div>
       </div>

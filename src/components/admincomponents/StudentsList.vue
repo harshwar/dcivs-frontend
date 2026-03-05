@@ -14,7 +14,7 @@
              <option v-for="y in uniqueYears" :key="y" :value="y">{{ y }}</option>
           </select>
           <!-- Search -->
-          <div class="relative flex-1 max-w-md group">
+          <div id="tour-student-search" class="relative flex-1 max-w-md group">
              <input 
                v-model="searchQuery" 
                type="text" 

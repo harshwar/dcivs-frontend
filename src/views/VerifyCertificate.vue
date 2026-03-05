@@ -12,7 +12,7 @@
         </div>
 
         <!-- Search Box (if no tokenId in URL) -->
-        <div v-if="!tokenId" class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1b2127] mb-6 shadow-sm dark:shadow-none transition-all duration-300">
+        <div id="tour-verify-form" v-if="!tokenId" class="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1b2127] mb-6 shadow-sm dark:shadow-none transition-all duration-300">
           <label class="block text-gray-600 dark:text-gray-400 text-sm mb-2 transition-colors">Enter Token ID</label>
           <div class="flex gap-3">
             <input 

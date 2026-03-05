@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 animate-fade-in">
+  <div id="tour-health-monitor" class="space-y-6 animate-fade-in">
     <!-- Header -->
     <div class="glass-panel p-6 rounded-2xl border border-indigo-500/20">
       <div class="flex items-center justify-between">

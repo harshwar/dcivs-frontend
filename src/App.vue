@@ -3,6 +3,7 @@
   <!-- Global UI Components -->
   <ToastNotification />
   <ConfirmDialog />
+  <PresentationOverlay />
   
   <router-view v-slot="{ Component, route }">
     <transition name="fade" mode="out-in">
@@ -19,6 +20,7 @@
 import { onMounted, onBeforeUnmount } from 'vue';
 import ToastNotification from './components/ui/ToastNotification.vue';
 import ConfirmDialog from './components/ui/ConfirmDialog.vue';
+import PresentationOverlay from './components/ui/PresentationOverlay.vue';
 import { initTheme } from './services/theme';
 import { API_BASE_URL } from './apiConfig';
 

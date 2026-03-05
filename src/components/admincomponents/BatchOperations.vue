@@ -397,7 +397,7 @@ const closePreview = () => {
     </div>
 
     <!-- 1. REGISTRATION -->
-    <div v-if="activeTab === 'registration'" class="animate-fade-in">
+    <div id="tour-batch-upload" v-if="activeTab === 'registration'" class="animate-fade-in">
        <div class="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
           <div class="flex justify-between items-start mb-4">
             <div>

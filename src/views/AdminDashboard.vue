@@ -446,15 +446,30 @@ function formatDate(dateStr) {
 
 // Automatically fetch data when the component is mounted to the DOM
 let pendingRefreshInterval = null
+
+// Presentation Mode Tab Switcher Listener
+const handleTourTabChange = (event) => {
+  if (event.detail) {
+    activeTab.value = event.detail
+    if (event.detail === 'approval') {
+       fetchPendingCount()
+    }
+  }
+}
+
 onMounted(() => {
   fetchDashboardData()
   fetchPendingCount()
   // Auto-refresh pending badge every 60s
   pendingRefreshInterval = setInterval(fetchPendingCount, 60000)
+  
+  // Presentation tour listener
+  document.addEventListener('tour-change-tab', handleTourTabChange)
 })
 
 onUnmounted(() => {
   if (pendingRefreshInterval) clearInterval(pendingRefreshInterval)
+  document.removeEventListener('tour-change-tab', handleTourTabChange)
 })
 
 // Theme Helper
@@ -553,7 +568,7 @@ async function fetchPendingCount() {
       <header class="flex items-center justify-between px-8 py-5 border-b border-transparent glass-header sticky top-0 z-20">
         <!-- Enhanced Header Content -->
         <div class="flex flex-col">
-          <div class="flex items-center gap-3">
+          <div id="tour-system-status" class="flex items-center gap-3">
             <h2 class="text-xl font-bold capitalize">{{ activeTab === 'issue' ? 'Register Record' : activeTab === 'health' ? 'System Health' : activeTab === 'approval' ? 'Approval Queue' : activeTab }}</h2>
             <div class="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
               <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
@@ -608,7 +623,7 @@ async function fetchPendingCount() {
           <!-- ANALYTICS GRID -->
           <div v-if="analytics" class="space-y-6">
             <!-- Row 1: Key Stats - Staggered Entry -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div id="tour-stat-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                <StatCard 
                  class="opacity-0 animate-fade-slide-up" style="animation-delay: 0.1s;"
                  label="Total Students" 
@@ -715,7 +730,7 @@ async function fetchPendingCount() {
 
         <!-- ACTIVITY LOGS TAB -->
         <div v-if="activeTab === 'logs'" class="space-y-6 animate-fade-in">
-          <div class="bg-white dark:bg-[#1b2127] border border-gray-200 dark:border-[#283039] rounded-2xl overflow-hidden shadow-sm">
+          <div id="tour-activity-logs" class="bg-white dark:bg-[#1b2127] border border-gray-200 dark:border-[#283039] rounded-2xl overflow-hidden shadow-sm">
              <div class="px-6 py-4 border-b border-gray-200 dark:border-[#283039] flex flex-wrap justify-between items-center gap-3">
                <h3 class="font-bold text-gray-900 dark:text-white">System Activity Log</h3>
                <div class="flex items-center gap-2">
@@ -834,7 +849,7 @@ async function fetchPendingCount() {
              </form>
              
              <!-- Wallet Migration (Danger Zone) -->
-             <div class="mt-8 pt-6 border-t border-gray-200 dark:border-[#30363d]">
+             <div id="tour-settings-reissue" class="mt-8 pt-6 border-t border-gray-200 dark:border-[#30363d]">
                <h4 class="text-xs font-bold text-red-500 uppercase mb-4">Danger Zone</h4>
                <div class="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-500/30 rounded-xl">
                  <h5 class="font-bold text-red-900 dark:text-red-400 mb-2">Reissue Student Wallets (Test Only)</h5>

@@ -246,6 +246,7 @@ onMounted(fetchPending)
       <div class="flex items-center gap-2">
         <!-- Bulk Approve -->
         <button
+          id="tour-approval-btn"
           v-if="selectedIds.size > 0"
           @click="handleBulkApprove"
           :disabled="isBulkProcessing"

@@ -2,7 +2,7 @@
   <div class="glass p-6 rounded-xl border border-gray-700 bg-[#1b2127]">
     <h2 class="text-xl font-bold text-white mb-4">Register Achievement Record</h2>
 
-    <div class="flex flex-col gap-4">
+    <div id="tour-issue-form" class="flex flex-col gap-4">
       <!-- STUDENT DROPDOWN -->
       <div class="flex flex-col gap-1">
         <span class="text-gray-400 text-sm">Select Student</span>
@@ -45,7 +45,7 @@
       </div>
 
       <!-- FILE UPLOAD -->
-      <div class="flex flex-col gap-1">
+      <div id="tour-issue-uploader" class="flex flex-col gap-1">
         <div class="flex justify-between items-center">
           <span class="text-gray-400 text-sm">Achievement File</span>
           <!-- Format Standardization Loader -->
@@ -68,6 +68,7 @@
 
       <!-- SUBMIT BUTTON -->
       <button
+         id="tour-issue-btn"
         class="mt-4 px-6 py-3 rounded-lg font-bold text-white transition-all transform active:scale-95"
         :class="isFormValid ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 cursor-not-allowed'"
         :disabled="!isFormValid || isIssuing"
