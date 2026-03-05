@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import PaginationControls from '../ui/PaginationControls.vue'
+import ProgressTracker from '../ui/ProgressTracker.vue'
 import { API_BASE_URL } from '../../apiConfig'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
+import { useJobPoller } from '../../composables/useJobPoller'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -14,6 +16,18 @@ const isLoading = ref(false)
 const isProcessing = ref(null) // ID of student being processed
 const selectedIds = ref(new Set()) // For bulk approve
 const isBulkProcessing = ref(false)
+const showProgressTracker = ref(false)
+
+// Bulk Approval Poller
+const { job: approveJob, startPolling: startApprovePolling, reset: resetApprovePoller } = useJobPoller()
+
+// IDE Steps for the tracker
+const bulkApproveSteps = [
+  { label: 'Verify Pending Status' },
+  { label: 'Generate Blockchain Wallet' },
+  { label: 'Update Database' },
+  { label: 'Send Activation Email' }
+]
 
 // Pagination State
 const currentPage = ref(1)
@@ -65,25 +79,54 @@ async function handleBulkApprove() {
   isBulkProcessing.value = true
   try {
     const token = localStorage.getItem('adminToken')
-    const res = await fetch(`${API_BASE}/bulk-approve`, {
+    const res = await fetch(`${API_BASE}/start-bulk-approve`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: [...selectedIds.value] })
     })
-    const data = await res.json()
+    
     if (res.ok) {
-      toast.success(data.message)
-      // Remove approved students from list
-      pendingStudents.value = pendingStudents.value.filter(s => !data.results.approved.includes(s.id))
-      selectedIds.value = new Set()
+      const data = await res.json()
+      // Open progress tracker and start polling
+      showProgressTracker.value = true
+      startApprovePolling(data.jobId, 2000)
     } else {
+      const data = await res.json()
       throw new Error(data.error || 'Bulk approval failed')
     }
   } catch (err) {
     toast.error(err.message)
-  } finally {
     isBulkProcessing.value = false
   }
+}
+
+// Watch bulk approve job
+watch(() => approveJob.value?.status, (status) => {
+  if (!status) return
+
+  if (status === 'completed' || status === 'failed') {
+    isBulkProcessing.value = false
+    const results = approveJob.value.result
+
+    if (results) {
+      if (results.approved && results.approved.length > 0) {
+        // Remove approved students from list
+        pendingStudents.value = pendingStudents.value.filter(s => !results.approved.includes(s.id))
+        selectedIds.value = new Set()
+      }
+    }
+  }
+})
+
+function onPipelineComplete(result) {
+  toast.success(`Bulk approval completed. Approved: ${result?.approved?.length || 0}`)
+  showProgressTracker.value = false
+  resetApprovePoller()
+}
+
+function onPipelineError(error) {
+  toast.error(`Bulk approval error: ${error || 'Unknown error'}`)
+  // Keep tracker open so they can see logs, they can close manually
 }
 
 // Edit Modal State
@@ -400,6 +443,18 @@ onMounted(fetchPending)
         </div>
       </div>
     </div>
+
+    <!-- Progress Tracker (Style 6 IDE) -->
+    <ProgressTracker
+      v-if="approveJob"
+      :jobId="approveJob.id"
+      :visible="showProgressTracker"
+      windowTitle="admin.exe — Bulk Appoval Pipeline"
+      :steps="bulkApproveSteps"
+      @complete="onPipelineComplete"
+      @error="onPipelineError"
+      @close="showProgressTracker = false; resetApprovePoller()"
+    />
   </div>
 </template>
 

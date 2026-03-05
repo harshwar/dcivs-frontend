@@ -119,7 +119,12 @@ import { useToast } from '../../composables/useToast.js'
 import { API_BASE_URL } from '../../apiConfig'
 import { standardizeFileToPNG } from '../../utils/fileStandardizer.js'
 
+import { useJobPoller } from '../../composables/useJobPoller'
+
 const toast = useToast()
+
+// Scan poller (separate from issuance poller)
+const { job: scanJob, startPolling: startScanPolling, reset: resetScanPoller } = useJobPoller()
 
 // Component props (not heavily used here but available for extensibility)
 const props = defineProps(['apiBase']) 
@@ -186,8 +191,8 @@ async function scanCertificate(file) {
     formData.append('studentName', selectedStudent.value?.name || '');
     formData.append('studentRoll', selectedStudent.value?.roll || '');
     
-    // Call the combined local OCR + Gemini AI backend endpoint
-    const res = await fetch(`${API_BASE_URL}/api/ai/verify-document`, {
+    // Call the NEW async endpoint — returns jobId immediately
+    const res = await fetch(`${API_BASE_URL}/api/ai/start-verify`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('adminToken') || localStorage.getItem('token')}`
@@ -196,75 +201,88 @@ async function scanCertificate(file) {
     });
     
     if (res.ok) {
-      const data = await res.json();
-      
-      // Store verification results
-      autoVerifiedMatch.value = data.match;
-      autoExtractedText.value = data.extracted_text || '';
-
-      // Auto-fill fields if they are currently empty
-      if (!title.value && data.title) title.value = data.title;
-      if (!department.value && data.department) department.value = data.department;
-      if (!description.value && data.description) description.value = data.description;
-      
-      // If we did a blind scan (no student selected), attempt to auto-match using the raw OCR text
-      if (!selectedStudentId.value && data.raw_text) {
-        const rawText = data.raw_text.toLowerCase();
-        let matchedStudent = null;
-
-        // Pass 1: Strict Check for Exact Roll Number
-        for (const student of students.value) {
-          if (student.roll && rawText.includes(student.roll.toLowerCase())) {
-            matchedStudent = student;
-            break;
-          }
-        }
-
-        // Pass 2: Fallback check for fuzzy Full Name match
-        if (!matchedStudent) {
-          for (const student of students.value) {
-            if (student.name) {
-              // Split name into major parts to ignore spacing/newlines from OCR Engine
-              const nameParts = student.name.toLowerCase().split(' ').filter(p => p.length > 2);
-              
-              // Verify ALL significant parts of the name exist somewhere in the raw text
-              const allPartsFound = nameParts.length > 0 && nameParts.every(part => rawText.includes(part));
-              
-              if (allPartsFound) {
-                matchedStudent = student;
-                break;
-              }
-            }
-          }
-        }
-
-        if (matchedStudent) {
-          selectedStudentId.value = matchedStudent.id;
-          autoVerifiedMatch.value = true;
-          toast.success(`Identity auto-detected: ${matchedStudent.name}! ✨`);
-        } else {
-          toast.warning('AI Scan Complete, but could not auto-identify student. Please select manually.');
-        }
-      } else {
-        // Standard scan notification if a student was already chosen
-        if (data.match) {
-          toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
-        } else if (selectedStudentId.value) {
-          toast.warning('AI Scan Complete, but could not mathematically verify the selected student identity.');
-        } else {
-          toast.success('AI Scan Complete: Extracted details successfully.');
-        }
-      }
+      const { jobId } = await res.json();
+      // Start polling for scan results
+      startScanPolling(jobId, 2000);
     } else {
-      throw new Error('Scan failed');
+      throw new Error('Scan request failed');
     }
   } catch (err) {
     console.error('AI Scan Error:', err);
     toast.error('AI Scanning failed. Please fill details manually.');
-  } finally {
     isScanning.value = false;
   }
 }
+
+// Watch the scan job for completion
+watch(() => scanJob.value?.status, (status) => {
+  if (!status) return;
+
+  if (status === 'completed' && scanJob.value?.result) {
+    const data = scanJob.value.result;
+    isScanning.value = false;
+
+    // Store verification results
+    autoVerifiedMatch.value = data.match;
+    autoExtractedText.value = data.extracted_text || '';
+
+    // Auto-fill fields if they are currently empty
+    if (!title.value && data.title) title.value = data.title;
+    if (!department.value && data.department) department.value = data.department;
+    if (!description.value && data.description) description.value = data.description;
+    
+    // If we did a blind scan (no student selected), attempt to auto-match
+    if (!selectedStudentId.value && data.raw_text) {
+      const rawText = data.raw_text.toLowerCase();
+      let matchedStudent = null;
+
+      // Pass 1: Strict Check for Exact Roll Number
+      for (const student of students.value) {
+        if (student.roll && rawText.includes(student.roll.toLowerCase())) {
+          matchedStudent = student;
+          break;
+        }
+      }
+
+      // Pass 2: Fallback check for fuzzy Full Name match
+      if (!matchedStudent) {
+        for (const student of students.value) {
+          if (student.name) {
+            const nameParts = student.name.toLowerCase().split(' ').filter(p => p.length > 2);
+            const allPartsFound = nameParts.length > 0 && nameParts.every(part => rawText.includes(part));
+            if (allPartsFound) {
+              matchedStudent = student;
+              break;
+            }
+          }
+        }
+      }
+
+      if (matchedStudent) {
+        selectedStudentId.value = matchedStudent.id;
+        autoVerifiedMatch.value = true;
+        toast.success(`Identity auto-detected: ${matchedStudent.name}! ✨`);
+      } else {
+        toast.warning('AI Scan Complete, but could not auto-identify student. Please select manually.');
+      }
+    } else {
+      if (data.match) {
+        toast.success('AI Scan Complete: Identity verified and fields auto-filled! ✨');
+      } else if (selectedStudentId.value) {
+        toast.warning('AI Scan Complete, but could not mathematically verify the selected student identity.');
+      } else {
+        toast.success('AI Scan Complete: Extracted details successfully.');
+      }
+    }
+
+    resetScanPoller();
+
+  } else if (status === 'failed') {
+    isScanning.value = false;
+    toast.error('AI Scanning failed. Please fill details manually.');
+    resetScanPoller();
+  }
+});
 
 const selectedStudent = computed(() => students.value.find(s => s.id === selectedStudentId.value))
 
