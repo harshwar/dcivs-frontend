@@ -101,32 +101,57 @@ const spotlightStyle = computed(() => {
 
 // Calculate where the Dialog Card should float
 const cardStyle = computed(() => {
+  const margin = 20
+  const cardWidth = 400 // approx max width
+  const cardHeight = 280 // approx max height
+  
   if (!currentStep.value.targetId || targetRect.value.width === 0) {
     // Center screen if no target
     return {
       top: '50%',
       left: '50%',
-      transform: 'translate(-50%, -50%)'
+      transform: 'translate(-50%, -50%)',
+      width: '90%',
+      maxWidth: `${cardWidth}px`
     }
   }
 
-  // Try to place it below the target
-  const padding = 12
-  const cardHeight = 250 // est
-  const targetBottom = targetRect.value.top + targetRect.value.height + padding + 20
+  // Determine best placement relative to targetRect
+  let top, left
+  const padding = 24
   
-  if (targetBottom + cardHeight < windowSize.value.height) {
-    // Fits Below
-    return {
-      top: `${targetBottom}px`,
-      left: `${Math.max(20, targetRect.value.left)}px` // Don't go off left edge
-    }
-  } else {
-    // Put it Above the target
-    return {
-      top: `${targetRect.value.top - padding - cardHeight - 20}px`,
-      left: `${Math.max(20, targetRect.value.left)}px`
-    }
+  // 1. Try Bottom
+  const spaceBelow = windowSize.value.height - (targetRect.value.top + targetRect.value.height)
+  if (spaceBelow > cardHeight + padding) {
+    top = targetRect.value.top + targetRect.value.height + padding
+    left = targetRect.value.left
+  } 
+  // 2. Try Top
+  else if (targetRect.value.top > cardHeight + padding) {
+    top = targetRect.value.top - cardHeight - padding
+    left = targetRect.value.left
+  }
+  // 3. Try Right (if target is small)
+  else if (windowSize.value.width - (targetRect.value.left + targetRect.value.width) > cardWidth + padding) {
+    top = targetRect.value.top
+    left = targetRect.value.left + targetRect.value.width + padding
+  }
+  // 4. Fallback: Center screen but avoid spotlight if possible
+  else {
+    top = windowSize.value.height / 2 - cardHeight / 2
+    left = windowSize.value.width / 2 - cardWidth / 2
+  }
+
+  // Clamp to viewport
+  const finalTop = Math.max(margin, Math.min(top, windowSize.value.height - cardHeight - margin))
+  const finalLeft = Math.max(margin, Math.min(left, windowSize.value.width - cardWidth - margin))
+
+  return {
+    top: `${finalTop}px`,
+    left: `${finalLeft}px`,
+    width: '90%',
+    maxWidth: `${cardWidth}px`,
+    transition: 'all 0.3s ease-out'
   }
 })
 
