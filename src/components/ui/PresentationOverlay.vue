@@ -59,7 +59,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useTour } from '../composables/useTour'
+import { useTour } from '../../composables/useTour'
 
 const tour = useTour()
 const isActive = tour.isActive
