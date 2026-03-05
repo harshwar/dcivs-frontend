@@ -222,32 +222,46 @@ const speakNative = (text) => {
 }
 
 const speak = (index) => {
-  if (!tour.isVoiceEnabled.value || typeof window === 'undefined') return
+  if (!tour.isVoiceEnabled.value || typeof window === 'undefined') return Promise.resolve(false)
 
-  // Stop any current audio
+  // Stop any current audio and resolve its pending promise to prevent "hangs"
   if (currentAudio.value) {
     currentAudio.value.pause()
+    if (currentAudio.value._resolve) currentAudio.value._resolve(false)
     currentAudio.value = null
   }
 
   const audio = new Audio(getAudioUrl(index))
   currentAudio.value = audio
   
-  // Return a promise that resolves when the audio ends or fails
+  // Return a promise that resolves when the audio ends, fails, or is interrupted
   return new Promise((resolve) => {
-    audio.onended = () => resolve(true)
-    audio.onerror = () => resolve(false)
+    // Store the resolve function on the audio object so we can trigger it if skipped
+    audio._resolve = resolve
+
+    audio.onended = () => {
+      audio._resolve = null
+      resolve(true)
+    }
+    audio.onerror = () => {
+      audio._resolve = null
+      resolve(false)
+    }
     
     audio.play().catch(err => {
       console.warn('Static audio failed, falling back to native voice:', err)
-      // Fallback to native synthesis if the file is missing or blocked
       const step = tour.tourScript[index]
       if (step) speakNative(`${step.title}. ${step.content}`)
       resolve(false)
     })
 
-    // Safety timeout (don't hang if audio fails to play properly)
-    setTimeout(() => resolve(false), 15000)
+    // Safety timeout
+    setTimeout(() => {
+      if (audio._resolve) {
+        audio._resolve(false)
+        audio._resolve = null
+      }
+    }, 20000)
   })
 }
 
@@ -265,17 +279,20 @@ watch([isActive, currentStepIndex], async () => {
   
   // Narrate current step
   if (isActive.value) {
-    // Wait a tick for DOM to settle
+    // Wait for DOM
     await nextTick()
     
-    // 1. Kick off preload for NEXT audio immediately to overlap network loading
+    // 1. Preload NEXT immediately
     preloadNext(currentStepIndex.value)
     
-    // 2. Wait for current voiceover to finish (or timeout/err) BEFORE triggering page actions
-    // This solves the issue of the page changing before the explanation is over.
+    // 2. Wait for current voiceover to finish
     await speak(currentStepIndex.value)
     
-    // 3. Voice is done, now we can fire site-logic actions (like logging in)
+    // 3. Add a small 'digest' delay so it doesn't feel rushed
+    // Especially important for steps that change the page immediately after
+    await new Promise(r => setTimeout(r, 1200))
+    
+    // 4. Fire site-level actions
     executeStepAction()
   }
 })
@@ -303,7 +320,7 @@ const handleResize = () => {
   updateSpotlight()
 }
 
-// Watch for route changes to auto-advance if we land on the "next" page automatically (e.g. after login)
+// Watch for route changes to auto-advance if we land on the "next" page automatically
 watch(() => router.currentRoute.value.path, (newPath) => {
   if (isActive.value) {
     const currentConfig = tour.tourScript[currentStepIndex.value]
@@ -311,8 +328,12 @@ watch(() => router.currentRoute.value.path, (newPath) => {
        // Check if this new path matches the NEXT step
        const nextConfig = tour.tourScript[currentStepIndex.value + 1]
        if (nextConfig && newPath === nextConfig.route) {
-          // slight delay to let the page settle
-          setTimeout(() => tour.nextStep(), 500)
+          // Verify it's not JUST the same route as current (prevent double skips)
+          setTimeout(() => {
+            if (isActive.value && router.currentRoute.value.path === nextConfig.route) {
+               tour.nextStep()
+            }
+          }, 800)
        }
     }
   }
