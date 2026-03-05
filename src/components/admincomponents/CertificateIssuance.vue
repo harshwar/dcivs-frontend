@@ -45,25 +45,41 @@
       </div>
 
       <!-- FILE UPLOAD -->
-      <div id="tour-issue-uploader" class="flex flex-col gap-1">
-        <div class="flex justify-between items-center">
+      <div id="tour-issue-uploader" class="flex flex-col gap-1 relative">
+        <div class="flex justify-between items-center mb-1">
           <span class="text-gray-400 text-sm">Achievement File</span>
           <!-- Format Standardization Loader -->
           <span v-if="isConverting && !isScanning" class="text-indigo-400 text-xs flex items-center gap-1 animate-pulse">
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
             Standardizing Format...
           </span>
-          <!-- AI Scan Loader -->
-          <span v-if="isScanning" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
+          <!-- AI Scan Loader (Simple Text when scanning starts but poller hasn't fetched yet) -->
+          <span v-if="isScanning && !scanJob" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-            AI Scanning...
+            Connecting to AI Server...
           </span>
         </div>
+
         <FileUpload
           v-model="selectedFile"
           accept="image/*,application/pdf"
           hint="PNG, JPG, WEBP, HEIC, or PDF"
         />
+
+        <!-- Detailed AI Scan Progress Bar (Shows over the form) -->
+        <div v-if="isScanning && scanJob" class="mt-2 w-full bg-gray-800 rounded-lg overflow-hidden border border-gray-700 shadow-inner">
+           <!-- The Bar -->
+           <div class="h-6 bg-gradient-to-r from-blue-600 to-indigo-500 relative transition-all duration-500 ease-out flex items-center" :style="{ width: `${scanJob.percentage || 5}%` }">
+             <!-- Animated stripe overlay for active processing feel -->
+             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgNDBsNDAtNDBIMjBMMCAyMHptNDAgMEwwIDAwaDIwbDIwIDIweiIgZmlsbD0id2hpXRlIiBmaWxsLW9wYWNpdHk9Ii4xNSIvPjwvc3ZnPg==')] opacity-30 animate-[slide_1s_linear_infinite]"></div>
+           </div>
+           
+           <!-- Text Label Centered over the bar track -->
+           <div class="absolute w-full mt-[-24px] pointer-events-none flex justify-between items-center px-4 h-6 text-xs font-bold drop-shadow-md text-white">
+             <span>{{ scanJob.step_label || 'Processing...' }}</span>
+             <span>{{ scanJob.percentage || 0 }}%</span>
+           </div>
+        </div>
       </div>
 
       <!-- SUBMIT BUTTON -->
