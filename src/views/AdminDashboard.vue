@@ -450,8 +450,10 @@ let pendingRefreshInterval = null
 // Presentation Mode Tab Switcher Listener
 const handleTourTabChange = (event) => {
   if (event.detail) {
-    activeTab.value = event.detail
-    if (event.detail === 'approval') {
+    // Normalize to 'approval' if 'approvals' is passed
+    const tabName = event.detail === 'approvals' ? 'approval' : event.detail
+    activeTab.value = tabName
+    if (tabName === 'approval') {
        fetchPendingCount()
     }
   }

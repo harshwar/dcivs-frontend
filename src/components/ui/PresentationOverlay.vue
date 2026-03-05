@@ -289,13 +289,18 @@ const executeStepAction = async () => {
     
     // Special case for approvals: we need to select students AFTER tab switch
     if (action === 'setTabApprovalsAndSelect') {
-      document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: 'approvals' }))
+      document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: 'approval' }))
       
-      // Give it time to render the new component
-      setTimeout(() => {
+      // Give it more time to render and fetch data
+      let attempts = 0
+      const checkAndClick = setInterval(() => {
         const checkbox = document.getElementById('select-all-students')
-        if (checkbox) checkbox.click()
-      }, 800)
+        if (checkbox) {
+          checkbox.click()
+          clearInterval(checkAndClick)
+        }
+        if (++attempts > 10) clearInterval(checkAndClick) // stop after 5s
+      }, 500)
     } else {
       document.dispatchEvent(new CustomEvent('tour-change-tab', { detail: tabName }))
     }
