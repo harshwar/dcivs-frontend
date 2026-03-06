@@ -37,7 +37,6 @@ const routes = [
   },
   { path: '/admin-login', name: 'AdminLogin', component: () => import('./views/AdminLogin.vue') },
   { path: '/admin-dashboard', name: 'AdminDashboard', component: () => import('./views/AdminDashboard.vue') },
-  { path: '/babylon', name: 'BabylonScene', component: () => import('./views/BabylonScene.vue') },
 // Inspection routes (public)
   { path: '/verify', name: 'VerifySearch', component: () => import('./views/VerifyCertificate.vue') },
   { path: '/verify/:tokenId', name: 'VerifyCertificate', component: () => import('./views/VerifyCertificate.vue') },
