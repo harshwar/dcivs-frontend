@@ -9,6 +9,7 @@ import ParticleBackground2 from '../components/ParticleBackground2.vue'
 import AudioService from '../services/audio'
 import AnalyticsChart from '../components/admincomponents/AnalyticsChart.vue'
 import { exportToCSV, exportToJSON } from '../services/exportService'
+import { useTour } from '../composables/useTour'
 import { useToast } from '../composables/useToast.js'
 import { useConfirm } from '../composables/useConfirm.js'
 import StatCard from '../components/admincomponents/analytics/StatCard.vue'
@@ -24,6 +25,7 @@ import PaginationControls from '../components/ui/PaginationControls.vue'
 
 const toast = useToast()
 const { confirm } = useConfirm()
+const tour = useTour()
 
 // Initialize router instance
 const router = useRouter()
@@ -870,6 +872,22 @@ async function fetchPendingCount() {
                </div>
              </div>
 
+           </div>
+           
+           <!-- Platform Demo -->
+           <div class="glass-panel rounded-2xl p-6 shadow-sm md:col-span-2">
+             <h3 class="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+               🖥️ Platform Tour
+             </h3>
+             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-2xl">
+               Run the interactive platform demo to see a guided walkthrough of the system's core features. This is useful for onboarding new administrators.
+             </p>
+             <button 
+                @click="tour.startTour()"
+               class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 text-sm transition-all hover:-translate-y-0.5"
+             >
+               Start Interactive Demo
+             </button>
            </div>
         </div>
         </Transition>
