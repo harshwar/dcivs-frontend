@@ -460,13 +460,17 @@ const toast = useToast()
 const router = useRouter()
 const activeTab = ref('profile') // Default tab
 
-// Works for both admins (adminToken) and students (token)
+// Strict role detection — adminToken means admin session, never mix the two
 const isAdmin = !!localStorage.getItem('adminToken')
 function getToken() {
-  return localStorage.getItem('adminToken') || localStorage.getItem('token') || ''
+  return isAdmin
+    ? localStorage.getItem('adminToken') || ''
+    : localStorage.getItem('token') || ''
 }
 
-const user = ref(JSON.parse(localStorage.getItem('adminUser') || localStorage.getItem('user') || '{}'))
+// Load user from the correct key only — prevents stale data from other sessions
+const userKey = isAdmin ? 'adminUser' : 'user'
+const user = ref(JSON.parse(localStorage.getItem(userKey) || '{}'))
 
 // Computed
 const userInitials = computed(() => {
@@ -588,6 +592,15 @@ onMounted(async () => {
     passkeySupported.value = isPasskeySupported()
     setupSessionExpiry()
 
+    // Clean up stale keys from any previous opposite-role session
+    if (isAdmin) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+    } else {
+      localStorage.removeItem('adminToken')
+      localStorage.removeItem('adminUser')
+    }
+
     const token = getToken()
     if (token) {
         let data = null
@@ -598,7 +611,8 @@ onMounted(async () => {
             if (res.ok) {
                 data = await res.json()
                 user.value = data
-                localStorage.setItem('user', JSON.stringify(data))
+                // Always write to the role-correct key
+                localStorage.setItem(userKey, JSON.stringify(data))
             }
         } catch (e) {
             console.error(e)
