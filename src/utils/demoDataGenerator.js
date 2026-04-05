@@ -78,10 +78,10 @@ export function getDemoAnalytics() {
     charts: {
       issuance_trend: trends,
       department_distribution: deptDist,
-      status_distribution: [
-        { status: 'Active', count: 1330, color: '#10b981' },
-        { status: 'Revoked', count: 12, color: '#ef4444' }
-      ],
+      status_distribution: {
+         Valid: 1330,   // Component expects object with Valid/Revoked keys
+         Revoked: 12
+      },
       student_funnel: {
         registered: 1150,
         wallet_created: 1120, // Component expects 'wallet_created'
