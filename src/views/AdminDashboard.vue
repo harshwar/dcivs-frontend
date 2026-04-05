@@ -476,10 +476,18 @@ async function handleVerifySetup2FA() {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error)
+    
+    // Update local state
     twoFA.recoveryCodes = data.recoveryCodes
     twoFA.step = 'recovery'
     twoFA.enabled = true
     twoFA.success = '2FA enabled!'
+    
+    // Update stored user object so state persists on refresh
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}')
+    adminUser.totp_enabled = true
+    localStorage.setItem('adminUser', JSON.stringify(adminUser))
+    
   } catch (err) { twoFA.error = err.message }
   finally { twoFA.isLoading = false }
 }
@@ -497,8 +505,16 @@ async function handleDisable2FA() {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error)
+    
+    // Update local state
     twoFA.enabled = false; twoFA.step = 'idle'; twoFA.disablePassword = ''
     twoFA.success = '2FA disabled.'
+    
+    // Update stored user object
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}')
+    adminUser.totp_enabled = false
+    localStorage.setItem('adminUser', JSON.stringify(adminUser))
+    
   } catch (err) { twoFA.error = err.message }
   finally { twoFA.isLoading = false }
 }

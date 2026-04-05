@@ -59,12 +59,38 @@
             <button
                id="tour-login-btn"
               type="submit"
-              :disabled="isLoading"
+              :disabled="isLoading || isPasskeyLoading"
               class="btn-primary w-full"
             >
               {{ isLoading ? 'Logging in...' : 'Login as Admin' }}
             </button>
           </form>
+
+          <!-- Passkey Divider -->
+          <div v-if="passkeySupported" class="relative my-6 px-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-100 dark:border-white/10"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-4 bg-white dark:bg-[#1b2127] text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider">or</span>
+            </div>
+          </div>
+
+          <!-- Passkey Login Button -->
+          <div v-if="passkeySupported" class="px-6 pb-6">
+            <button
+              @click="handlePasskeyLogin"
+              :disabled="isPasskeyLoading || isLoading"
+              class="passkey-btn w-full group"
+            >
+              <div class="flex items-center justify-center gap-3">
+                <svg class="w-5 h-5 text-indigo-500 dark:text-indigo-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                </svg>
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ isPasskeyLoading ? 'Authenticating...' : 'Sign in with Passkey' }}</span>
+              </div>
+            </button>
+          </div>
 
           <!-- MESSAGES -->
           <div class="px-6 pb-4">
@@ -92,7 +118,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
-import { API_BASE_URL } from '../apiConfig'
+import { loginWithPasskey, isPasskeySupported } from '../services/passkeyService.js'
 
 const API_BASE = `${API_BASE_URL}/api/auth`
 
@@ -102,11 +128,15 @@ const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const isLoading = ref(false)
+const isPasskeyLoading = ref(false)
 const errorMessage = ref('')
 const csrfToken = ref('')
+const passkeySupported = ref(false)
 
 // Fetch CSRF token on mount
 onMounted(async () => {
+  passkeySupported.value = isPasskeySupported()
+  
   try {
     const res = await fetch(`${API_BASE_URL}/api/csrf-token`, {
       credentials: 'include' // Important for cookies
@@ -162,6 +192,34 @@ async function handleAdminLogin() {
   }
 }
 
+async function handlePasskeyLogin() {
+  isPasskeyLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const result = await loginWithPasskey()
+    
+    // 1. Handle 2FA requirement
+    if (result.requires2FA) {
+      sessionStorage.setItem('2fa_temp_token', result.tempToken)
+      sessionStorage.setItem('2fa_is_admin', 'true')
+      router.push('/2fa-challenge')
+      return
+    }
+
+    // 2. Store auth data (Admins use adminToken)
+    localStorage.setItem('adminToken', result.token)
+    localStorage.setItem('adminUser', JSON.stringify(result.user))
+
+    // 3. Redirect to admin dashboard
+    router.push('/admin-dashboard')
+  } catch (err) {
+    errorMessage.value = err.message
+  } finally {
+    isPasskeyLoading.value = false
+  }
+}
+
 
 </script>
 
@@ -212,5 +270,9 @@ async function handleAdminLogin() {
 /* ALERT */
 .alert-error {
   @apply text-[13px] text-red-600 dark:text-red-200 p-2 bg-red-50 dark:bg-red-500/10 rounded-lg border border-red-100 dark:border-red-500/20 transition-colors;
+}
+.passkey-btn {
+  @apply bg-white dark:bg-white/5 border-2 border-gray-100 dark:border-white/10 hover:border-indigo-400 dark:hover:border-indigo-500/50 text-gray-700 dark:text-gray-200 font-semibold py-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:shadow-md;
 }
 </style>

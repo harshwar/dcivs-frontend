@@ -48,12 +48,14 @@ export function getDemoAnalytics() {
   let baseVolume = 15;
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthLabel = d.toLocaleString('default', { month: 'short' });
+    const yearLabel = d.getFullYear();
     
     // Add some random noise and strong upward trend
     baseVolume = baseVolume + randInt(20, 80);
     
     trends.push({
-      date: d.toISOString(),
+      date: `${monthLabel} ${yearLabel}`,
       count: baseVolume,
       successful: Math.floor(baseVolume * 0.98),
       failed: Math.ceil(baseVolume * 0.02)
@@ -61,7 +63,7 @@ export function getDemoAnalytics() {
   }
 
   const deptDist = departments.map(dep => ({
-    department: dep,
+    name: dep, // Component expects 'name'
     count: randInt(50, 400)
   })).sort((a, b) => b.count - a.count);
 
@@ -82,8 +84,8 @@ export function getDemoAnalytics() {
       ],
       student_funnel: {
         registered: 1150,
-        verified: 1120,
-        issued: 1085
+        wallet_created: 1120, // Component expects 'wallet_created'
+        cert_received: 1085   // Component expects 'cert_received'
       }
     }
   };
