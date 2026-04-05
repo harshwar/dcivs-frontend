@@ -416,7 +416,7 @@ function onIssuePipelineComplete(results) {
   if (results && results.issued && parsedRecords.value) {
      // Update UI statuses based on results
      results.issued.forEach(issuedRec => {
-        const uiRec = parsedRecords.value.find(r => r.data.student_id === issuedRec.studentId)
+        const uiRec = parsedRecords.value.find(r => r.data.student_id === issuedRec.studentId && r.data.image_filename === issuedRec.filename)
         if (uiRec) {
            uiRec.status = 'success'
            uiRec.message = 'Issued! 🚀'
@@ -424,7 +424,7 @@ function onIssuePipelineComplete(results) {
      })
      if (results.failed) {
          results.failed.forEach(failedRec => {
-            const uiRec = parsedRecords.value.find(r => r.data.student_id === failedRec.studentId)
+            const uiRec = parsedRecords.value.find(r => r.data.student_id === failedRec.studentId && r.data.image_filename === failedRec.filename)
             if (uiRec) {
                uiRec.status = 'error'
                uiRec.message = failedRec.error || 'Failed'
