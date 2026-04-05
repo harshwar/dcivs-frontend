@@ -339,11 +339,35 @@ const verifyBatch = async () => {
 }
 
 /**
+ * 2b. Manual Verification Bypass
+ * Marks all pending records as verified without calling the AI endpoint.
+ */
+const manualVerifyAll = () => {
+  const pending = parsedRecords.value.filter(r => r.status === 'pending')
+  if (!pending.length) {
+    toast.info('No pending records to verify.')
+    return
+  }
+  
+  pending.forEach(rec => {
+    rec.status = 'verified'
+    rec.message = 'Manual Override ✅'
+  })
+  
+  toast.success(`Manually verified ${pending.length} records. Ready to issue.`)
+}
+
+/**
  * 3. Issue Verified Records (Async Backend Pipeline)
  */
 const issueBatch = async () => {
   const toIssue = parsedRecords.value.filter(r => r.status === 'verified' || r.status === 'warning')
-  if (!toIssue.length) return
+  if (!toIssue.length) {
+    if (parsedRecords.value.length > 0) {
+      toast.warning('No verified records to issue. Run "Verify Docs" first, then issue the verified ones.')
+    }
+    return
+  }
   
   isProcessing.value = true
   progress.value = { current: 0, total: 100, status: 'Submitting Batch Job...' }
@@ -417,6 +441,10 @@ function onIssuePipelineError(error) {
 }
 
 // Stats
+const verifiedCount = computed(() => {
+  return parsedRecords.value.filter(r => r.status === 'verified' || r.status === 'warning').length
+})
+
 const stats = computed(() => {
   const s = { pending: 0, verified: 0, warning: 0, success: 0, error: 0 }
   parsedRecords.value.forEach(r => s[r.status]++)
@@ -659,9 +687,12 @@ const closePreview = () => {
           
           <template v-else>
              <button @click="verifyBatch" :disabled="isProcessing" class="px-6 py-3 bg-blue-600 rounded-xl font-bold text-white hover:bg-blue-500 disabled:opacity-50">
-                🔍 Verify Docs (OCR)
+                🔍 Verify Docs (OCR/AI)
              </button>
-             <button @click="issueBatch" :disabled="isProcessing || (walletInfo && Number(walletInfo.balanceEth) < (parseFloat(walletInfo.estimatedCostEth) * parsedRecords.length))" class="px-6 py-3 bg-green-600 rounded-xl font-bold text-white hover:bg-green-500 disabled:opacity-50 disabled:bg-gray-600 transition-colors">
+             <button @click="manualVerifyAll" :disabled="isProcessing" class="px-6 py-3 bg-purple-600 rounded-xl font-bold text-white hover:bg-purple-500 disabled:opacity-50 transition-colors" title="Bypass AI verification and mark all records as verified based on the CSV">
+                ⚡ Manual Verify All
+             </button>
+             <button @click="issueBatch" :disabled="isProcessing || verifiedCount === 0 || (walletInfo && Number(walletInfo.balanceEth) < (parseFloat(walletInfo.estimatedCostEth) * parsedRecords.length))" :title="verifiedCount === 0 ? 'Run Verify Docs first' : `Issue ${verifiedCount} verified record(s)`" class="px-6 py-3 bg-green-600 rounded-xl font-bold text-white hover:bg-green-500 disabled:opacity-50 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors">
                 🚀 Issue Verified
              </button>
               <button @click="parsedRecords = []" class="px-6 py-3 bg-gray-600 rounded-xl font-bold text-white hover:bg-gray-500">
