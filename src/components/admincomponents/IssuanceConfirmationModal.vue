@@ -55,6 +55,17 @@
                      Extracting text with Local Engine...
                   </div>
 
+                  <!-- Manual Mode (AI Disabled) -->
+                  <div v-else-if="aiDisabled" class="p-4 rounded-xl bg-yellow-900/20 border border-yellow-800 flex items-start gap-3">
+                     <span class="text-yellow-500 text-xl">✋</span>
+                     <div>
+                        <h5 class="text-sm font-bold text-yellow-300">Manual Mode</h5>
+                        <p class="text-xs text-yellow-400 mt-1">
+                           AI verification is disabled. Please ensure all details are correct before issuing.
+                        </p>
+                     </div>
+                  </div>
+
                   <div v-else class="space-y-4">
                      <!-- Success Alert -->
                      <div v-if="isMatch" class="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-start gap-3">
@@ -168,7 +179,8 @@ const props = defineProps({
   student: Object,
   isProcessing: Boolean,
   preVerifiedMatch: Boolean,
-  preExtractedText: String
+  preExtractedText: String,
+  aiDisabled: Boolean
 });
 
 const emit = defineEmits(['close', 'confirm']);
@@ -196,7 +208,7 @@ watch(() => props.isOpen, async (open) => {
     if (props.preExtractedText || props.preVerifiedMatch !== null) {
       isMatch.value = props.preVerifiedMatch;
       extractedText.value = props.preExtractedText;
-    } else if (props.file && !extractedText.value) {
+    } else if (props.file && !extractedText.value && !props.aiDisabled) {
       startScan();
     }
     

@@ -44,6 +44,23 @@
         ></textarea>
       </div>
 
+      <!-- AI TOGGLE -->
+      <div class="flex items-center justify-between p-3 rounded-lg border transition-all duration-300"
+           :class="aiEnabled ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-yellow-500/40 bg-yellow-500/5'">
+        <div class="flex items-center gap-3">
+          <span class="text-lg">{{ aiEnabled ? '🤖' : '✋' }}</span>
+          <div>
+            <span class="text-sm font-bold" :class="aiEnabled ? 'text-indigo-300' : 'text-yellow-300'">{{ aiEnabled ? 'AI Verification Active' : 'Manual Mode' }}</span>
+            <p class="text-[11px] text-gray-500">{{ aiEnabled ? 'Auto-scan, identity match & field extraction' : 'AI disabled — fill all fields manually' }}</p>
+          </div>
+        </div>
+        <button @click="aiEnabled = !aiEnabled" class="relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900"
+                :class="aiEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-gray-600 focus:ring-yellow-500'">
+          <span class="block w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300"
+                :class="aiEnabled ? 'translate-x-6' : 'translate-x-0.5'"></span>
+        </button>
+      </div>
+
       <!-- FILE UPLOAD -->
       <div id="tour-issue-uploader" class="flex flex-col gap-1 relative">
         <div class="flex justify-between items-center mb-1">
@@ -54,7 +71,7 @@
             Standardizing Format...
           </span>
           <!-- AI Scan Loader (Simple Text when scanning starts but waiting for tracker) -->
-          <span v-if="isScanning" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
+          <span v-if="isScanning && aiEnabled" class="text-blue-400 text-xs flex items-center gap-1 animate-pulse">
             <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
             Connecting to AI Server...
           </span>
@@ -94,6 +111,7 @@
       :isProcessing="isIssuing"
       :preVerifiedMatch="autoVerifiedMatch"
       :preExtractedText="autoExtractedText"
+      :aiDisabled="!aiEnabled"
       @close="showConfirmationModal = false"
       @confirm="confirmIssuance"
     />
@@ -150,6 +168,7 @@ const standardizedImage = ref(null) // The parsed clean PNG blob
 const isIssuing = ref(false) // Loading state for the submit button
 const isConverting = ref(false) // Loading state for file standardization
 const isScanning = ref(false) // Loading state for AI scanning
+const aiEnabled = ref(true) // Toggle for AI verification
 const showConfirmationModal = ref(false) // Modal visibility
 const activeJobId = ref('') // Current polling job for async issuance
 
@@ -193,8 +212,10 @@ watch(selectedFile, async (newFile) => {
       isConverting.value = false;
     }
 
-    // 2. Pass the standard PNG right into the AI Scanner
-    await scanCertificate(standardizedImage.value);
+    // 2. Pass the standard PNG right into the AI Scanner (only if AI is enabled)
+    if (aiEnabled.value) {
+      await scanCertificate(standardizedImage.value);
+    }
   }
 });
 
