@@ -174,6 +174,10 @@ const activeJobId = ref('') // Current polling job for async issuance
 
 const showScanProgressTracker = ref(false) // Progress tracker for scanning
 const activeScanJobId = ref('') // Current polling job for AI scan
+
+const showProgressTracker = ref(false) // Progress tracker for issuance pipeline
+// activeJobId is actually declared at line 173
+
 const scanSteps = [
   { label: 'Initialize Vision' },
   { label: 'Extract Text (OCR)' },
