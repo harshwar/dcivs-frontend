@@ -24,9 +24,14 @@ import ApproveStudents from '../components/admincomponents/ApproveStudents.vue'
 import PaginationControls from '../components/ui/PaginationControls.vue'
 import { registerPasskey, getPasskeys, deletePasskey as deletePasskeyService, isPasskeySupported } from '../services/passkeyService.js'
 
+// Demo Mode Imports
+import { useDemoMode } from '../composables/useDemoMode'
+import { getDemoAnalytics, getDemoAuditLogs, getDemoCertificates, getDemoStudents } from '../utils/demoDataGenerator'
+
 const toast = useToast()
 const { confirm } = useConfirm()
 const tour = useTour()
+const { isDemoMode, toggleDemoMode } = useDemoMode()
 
 // Initialize router instance
 const router = useRouter()
@@ -159,6 +164,33 @@ async function fetchDashboardData() {
     return
   }
 
+  if (isDemoMode.value) {
+    analyticsLoading.value = true
+    walletLoading.value = true
+    setTimeout(() => {
+      // Use the refined analytics generator
+      analytics.value = getDemoAnalytics()
+      
+      // Populate student and certificate lists for the tabs
+      students.value = getDemoStudents()
+      certificates.value = getDemoCertificates()
+      
+      // Set wallet
+      walletInfo.value = {
+        balanceEth: '7.45',
+        network: 'sepolia',
+        gasPrice: '14.2'
+      }
+      
+      analyticsLoading.value = false
+      walletLoading.value = false
+      
+      // Also get logs immediately
+      logs.value = getDemoAuditLogs()
+    }, 400)
+    return
+  }
+
   try {
     // 1. Fetch Students List
     const resStudents = await fetch(`${API_BASE}/students`, {
@@ -259,6 +291,10 @@ function handleStudentEdits(updatedStudent) {
 }
 
 async function fetchLogs() {
+  if (isDemoMode.value) {
+    logs.value = getDemoAuditLogs()
+    return
+  }
   const token = localStorage.getItem('adminToken')
   if (!token) return
 
@@ -595,6 +631,10 @@ function setTheme(dark) {
 
 // Fetch pending approval count for sidebar badge
 async function fetchPendingCount() {
+  if (isDemoMode.value) {
+    pendingCount.value = 8 // just a fixed number for demo
+    return
+  }
   try {
     const token = localStorage.getItem('adminToken')
     if (!token) return
@@ -694,6 +734,19 @@ async function fetchPendingCount() {
           <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5 hidden sm:block">Blockchain Credential Monitoring System</p>
         </div>
         <div class="flex items-center gap-4">
+          <!-- Demo Mode Toggle -->
+          <button 
+            @click="playClick(); toggleDemoMode(); fetchDashboardData()"
+            class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-bold transition-all duration-300"
+            :class="isDemoMode ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'bg-gray-100 dark:bg-[#1b2127] text-gray-400 border-gray-200 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-[#252b32] hover:text-gray-200'"
+            title="Toggle mock data for presentations"
+          >
+            <div class="relative flex items-center justify-center w-4 h-4 rounded-full" :class="isDemoMode ? 'bg-indigo-500' : 'bg-gray-400'">
+              <span v-if="isDemoMode" class="absolute w-4 h-4 rounded-full bg-indigo-500 animate-ping opacity-75"></span>
+            </div>
+            Demo Mode
+          </button>
+
           <!-- Wallet Balance / Status -->
           <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 shadow-inner group relative">
              <div v-if="walletLoading" class="flex items-center gap-2 text-gray-400">
