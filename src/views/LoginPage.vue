@@ -233,6 +233,12 @@ async function handleLogin() {
         return
       }
 
+      // If the backend returned an admin role, block login on the student page
+      if (data.user.role === 'admin') {
+        errorMessage.value = 'This is the student login page. Please use the Admin login at /admin.'
+        return
+      }
+
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       

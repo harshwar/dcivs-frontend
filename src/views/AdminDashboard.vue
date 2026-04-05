@@ -1,8 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue' // Vue composition API utilities
-import { useRouter } from 'vue-router' // Router for page navigation
-import CertificateIssuance from '../components/admincomponents/CertificateIssuance.vue' // Custom component for certificate issuance form
-import BatchOperations from '../components/admincomponents/BatchOperations.vue' // Batch CSV operations
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import CertificateIssuance from '../components/admincomponents/CertificateIssuance.vue'
+import BatchOperations from '../components/admincomponents/BatchOperations.vue'
 import { isDark, toggleTheme } from '../services/theme'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import ParticleBackground2 from '../components/ParticleBackground2.vue'
@@ -22,6 +22,7 @@ import StudentFunnelChart from '../components/admincomponents/analytics/StudentF
 import HealthMonitor from '../components/admincomponents/HealthMonitor.vue'
 import ApproveStudents from '../components/admincomponents/ApproveStudents.vue'
 import PaginationControls from '../components/ui/PaginationControls.vue'
+import { registerPasskey, getPasskeys, deletePasskey as deletePasskeyService, isPasskeySupported } from '../services/passkeyService.js'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -397,6 +398,115 @@ async function changeAdminPassword() {
 
 const reissueState = ref({ loading: false, error: '', success: '' })
 
+// ── 2FA State (Admin) ─────────────────────────────────────
+const twoFA = reactive({
+  enabled: false,
+  step: 'idle', // 'idle' | 'qr' | 'recovery'
+  qrCode: '',
+  secret: '',
+  verifyCode: '',
+  recoveryCodes: [],
+  disablePassword: '',
+  isLoading: false,
+  error: '',
+  success: ''
+})
+
+async function handleSetup2FA() {
+  twoFA.isLoading = true; twoFA.error = ''
+  try {
+    const token = localStorage.getItem('adminToken')
+    const res = await fetch(`${API_BASE}/auth/2fa/setup`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    twoFA.secret = data.secret
+    twoFA.qrCode = data.qrCode
+    twoFA.step = 'qr'
+  } catch (err) { twoFA.error = err.message }
+  finally { twoFA.isLoading = false }
+}
+
+async function handleVerifySetup2FA() {
+  twoFA.isLoading = true; twoFA.error = ''
+  try {
+    const token = localStorage.getItem('adminToken')
+    const res = await fetch(`${API_BASE}/auth/2fa/verify-setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ token: twoFA.verifyCode })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    twoFA.recoveryCodes = data.recoveryCodes
+    twoFA.step = 'recovery'
+    twoFA.enabled = true
+    twoFA.success = '2FA enabled!'
+  } catch (err) { twoFA.error = err.message }
+  finally { twoFA.isLoading = false }
+}
+
+async function handleDisable2FA() {
+  const ok = await confirm('Disable 2FA', 'Are you sure? Your account will be less secure.', { danger: true, confirmText: 'Disable 2FA' })
+  if (!ok) return
+  twoFA.isLoading = true; twoFA.error = ''
+  try {
+    const token = localStorage.getItem('adminToken')
+    const res = await fetch(`${API_BASE}/auth/2fa/disable`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ password: twoFA.disablePassword })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    twoFA.enabled = false; twoFA.step = 'idle'; twoFA.disablePassword = ''
+    twoFA.success = '2FA disabled.'
+  } catch (err) { twoFA.error = err.message }
+  finally { twoFA.isLoading = false }
+}
+
+// ── Passkey State (Admin) ──────────────────────────────────
+const passkeySupported = ref(false)
+const adminPasskeys = ref([])
+const newPasskeyName = ref('')
+const passkeyLoading = ref(false)
+const passkeyError = ref('')
+const passkeySuccess = ref('')
+
+async function fetchAdminPasskeys() {
+  try { adminPasskeys.value = await getPasskeys() } catch (e) { console.error(e) }
+}
+
+async function handleRegisterPasskey() {
+  passkeyError.value = ''; passkeySuccess.value = ''; passkeyLoading.value = true
+  try {
+    const name = newPasskeyName.value.trim() || 'Admin Passkey'
+    await registerPasskey(name)
+    passkeySuccess.value = `Passkey "${name}" registered!`
+    newPasskeyName.value = ''
+    await fetchAdminPasskeys()
+  } catch (err) { passkeyError.value = err.message }
+  finally { passkeyLoading.value = false }
+}
+
+async function handleDeletePasskey(credentialId, name) {
+  const ok = await confirm('Delete Passkey', `Delete "${name || 'Passkey'}"?`, { danger: true, confirmText: 'Delete' })
+  if (!ok) return
+  passkeyError.value = ''; passkeySuccess.value = ''
+  try {
+    await deletePasskeyService(credentialId)
+    passkeySuccess.value = 'Passkey deleted.'
+    await fetchAdminPasskeys()
+  } catch (err) { passkeyError.value = err.message }
+}
+
+function formatPasskeyDate(dateStr) {
+  if (!dateStr) return 'Unknown'
+  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 async function reissueAllWallets() {
   reissueState.value.error = ''
   reissueState.value.success = ''
@@ -464,11 +574,13 @@ const handleTourTabChange = (event) => {
 onMounted(() => {
   fetchDashboardData()
   fetchPendingCount()
-  // Auto-refresh pending badge every 60s
   pendingRefreshInterval = setInterval(fetchPendingCount, 60000)
-  
-  // Presentation tour listener
   document.addEventListener('tour-change-tab', handleTourTabChange)
+  // Check passkey support and load admin 2FA state
+  passkeySupported.value = isPasskeySupported()
+  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}')
+  twoFA.enabled = adminUser.totp_enabled || false
+  if (passkeySupported.value) fetchAdminPasskeys()
 })
 
 onUnmounted(() => {
@@ -872,6 +984,89 @@ async function fetchPendingCount() {
                </div>
              </div>
 
+           </div>
+
+           <!-- 2FA Panel -->
+           <div class="glass-panel rounded-2xl p-6 shadow-sm md:col-span-2">
+             <h3 class="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">🔐 Two-Factor Authentication</h3>
+             <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Add TOTP-based 2FA for an extra layer of protection on your admin login.</p>
+
+             <!-- Enabled state -->
+             <div v-if="twoFA.enabled" class="space-y-4">
+               <div class="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                 <span class="text-green-400 text-xl">✓</span>
+                 <div><p class="text-green-400 font-semibold text-sm">2FA is enabled</p><p class="text-xs text-gray-500">Your admin account requires a TOTP code on each login</p></div>
+               </div>
+               <div class="space-y-2 max-w-sm">
+                 <label class="text-xs font-bold text-gray-500 uppercase">Password to disable</label>
+                 <input v-model="twoFA.disablePassword" type="password" placeholder="Current password" class="w-full mt-1 glass-input rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white" />
+                 <button @click="handleDisable2FA" :disabled="twoFA.isLoading || !twoFA.disablePassword" class="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition">{{ twoFA.isLoading ? 'Disabling...' : 'Disable 2FA' }}</button>
+               </div>
+             </div>
+
+             <!-- Setup flow -->
+             <div v-else>
+               <div v-if="twoFA.step === 'idle'">
+                 <button @click="handleSetup2FA" :disabled="twoFA.isLoading" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition shadow-lg shadow-indigo-500/20 text-sm">{{ twoFA.isLoading ? 'Setting up...' : 'Enable 2FA' }}</button>
+               </div>
+               <div v-if="twoFA.step === 'qr'" class="space-y-4 max-w-sm">
+                 <div class="bg-gray-50 dark:bg-[#0d1117] rounded-xl p-4 text-center border dark:border-[#30363d]">
+                   <p class="text-xs text-gray-500 mb-3">Scan with Google Authenticator, Authy, etc.</p>
+                   <img v-if="twoFA.qrCode" :src="twoFA.qrCode" alt="QR Code" class="mx-auto w-40 h-40 rounded-lg" />
+                   <p class="text-xs text-gray-400 mt-2">Manual: <code class="text-indigo-400 select-all">{{ twoFA.secret }}</code></p>
+                 </div>
+                 <input v-model="twoFA.verifyCode" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit code" class="w-full text-center font-mono text-xl tracking-widest px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                 <button @click="handleVerifySetup2FA" :disabled="twoFA.isLoading || twoFA.verifyCode.length < 6" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl transition text-sm">{{ twoFA.isLoading ? 'Verifying...' : 'Verify & Enable' }}</button>
+               </div>
+               <div v-if="twoFA.step === 'recovery'" class="space-y-3 max-w-sm">
+                 <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                   <p class="text-amber-300 text-xs font-semibold">⚠ Save these recovery codes — each can only be used once.</p>
+                 </div>
+                 <div class="grid grid-cols-2 gap-1.5">
+                   <code v-for="code in twoFA.recoveryCodes" :key="code" class="block p-2 bg-[#0d1117] border border-[#30363d] rounded text-center font-mono text-xs text-white select-all">{{ code }}</code>
+                 </div>
+                 <button @click="twoFA.step = 'idle'" class="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-xl transition text-sm">I've saved my codes ✓</button>
+               </div>
+             </div>
+
+             <div v-if="twoFA.error" class="mt-3 p-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-xs">{{ twoFA.error }}</div>
+             <div v-if="twoFA.success" class="mt-3 p-2 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 text-xs">{{ twoFA.success }}</div>
+           </div>
+
+           <!-- Passkeys Panel -->
+           <div v-if="passkeySupported" class="glass-panel rounded-2xl p-6 shadow-sm md:col-span-2">
+             <h3 class="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">🔑 Passkeys</h3>
+             <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Sign in with your fingerprint, face, or device PIN — no password needed.</p>
+
+             <!-- List -->
+             <div v-if="adminPasskeys.length > 0" class="space-y-2 mb-5">
+               <div v-for="pk in adminPasskeys" :key="pk.id" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#0d1117] rounded-xl border dark:border-[#30363d] border-gray-200 group hover:border-indigo-400 dark:hover:border-indigo-500/30 transition-all">
+                 <div class="flex items-center gap-3">
+                   <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+                   </div>
+                   <div>
+                     <p class="font-medium text-sm text-gray-800 dark:text-white">{{ pk.friendly_name || 'Passkey' }}</p>
+                     <p class="text-xs text-gray-400">Added {{ formatPasskeyDate(pk.created_at) }}<span v-if="pk.backed_up" class="ml-2 text-green-500">✓ Synced</span></p>
+                   </div>
+                 </div>
+                 <button @click="handleDeletePasskey(pk.id, pk.friendly_name)" class="px-2.5 py-1 text-xs font-medium text-red-500 hover:text-white hover:bg-red-500 border border-red-200 dark:border-red-500/30 rounded-lg transition-all opacity-0 group-hover:opacity-100">Delete</button>
+               </div>
+             </div>
+             <div v-else class="p-4 bg-gray-50 dark:bg-[#0d1117] rounded-xl border dark:border-[#30363d] border-gray-200 text-center mb-5">
+               <p class="text-sm text-gray-500">No passkeys registered yet.</p>
+             </div>
+
+             <!-- Register -->
+             <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+               <input v-model="newPasskeyName" type="text" class="flex-1 w-full sm:w-auto glass-input rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white" placeholder="Passkey name (e.g., MacBook Touch ID)" />
+               <button @click="handleRegisterPasskey" :disabled="passkeyLoading" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition shadow-lg shadow-indigo-500/20 disabled:opacity-50 text-sm flex items-center gap-2">
+                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                 {{ passkeyLoading ? 'Registering...' : 'Register Passkey' }}
+               </button>
+             </div>
+             <div v-if="passkeyError" class="mt-3 p-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-xs">⚠️ {{ passkeyError }}</div>
+             <div v-if="passkeySuccess" class="mt-3 p-2 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 text-xs">✅ {{ passkeySuccess }}</div>
            </div>
            
            <!-- Platform Demo -->

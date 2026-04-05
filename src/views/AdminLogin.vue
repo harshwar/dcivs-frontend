@@ -127,18 +127,26 @@ async function handleAdminLogin() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-csrf-token': csrfToken.value // Include CSRF header
+        'x-csrf-token': csrfToken.value
       },
-      credentials: 'include', // Send cookies (including CSRF cookie)
+      credentials: 'include',
       body: JSON.stringify({
         email: email.value,
         password: password.value,
-        expectedRole: 'admin' // Ensure backend knows we only want admin access
+        expectedRole: 'admin'
       })
     })
 
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Login failed')
+
+    // 2FA required — redirect to challenge page
+    if (data.requires2FA) {
+      sessionStorage.setItem('2fa_temp_token', data.tempToken)
+      sessionStorage.setItem('2fa_is_admin', 'true') // flag so 2FA challenge redirects to admin dashboard
+      router.push('/2fa-challenge')
+      return
+    }
 
     // Save Admin Token
     localStorage.setItem('adminToken', data.token)
@@ -153,6 +161,7 @@ async function handleAdminLogin() {
     isLoading.value = false
   }
 }
+
 
 </script>
 

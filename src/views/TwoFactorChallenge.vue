@@ -206,21 +206,20 @@ async function validate(body) {
     const data = await res.json()
 
     if (res.ok) {
-      // Store real auth data
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
       sessionStorage.removeItem('2fa_temp_token')
+      sessionStorage.removeItem('2fa_is_admin')
 
-      // 1. Check for student-specific PIN setup (not for admins)
-      const isStudent = data.user.role !== 'admin'
-      const needsPin = isStudent && data.user.has_passkeys && !data.user.wallet_pin_set;
-
-      if (needsPin) {
-        router.push('/passkey-setup')
-      } else if (data.user.role === 'admin') {
+      if (data.user.role === 'admin' || data.user.role === 'super_admin') {
+        // Admin — store under adminToken/adminUser keys
+        localStorage.setItem('adminToken', data.token)
+        localStorage.setItem('adminUser', JSON.stringify(data.user))
         router.push('/admin-dashboard')
       } else {
-        router.push('/student-dashboard')
+        // Student — store under token/user keys
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        const needsPin = data.user.has_passkeys && !data.user.wallet_pin_set
+        router.push(needsPin ? '/passkey-setup' : '/student-dashboard')
       }
     } else {
       throw new Error(data.error || 'Verification failed')

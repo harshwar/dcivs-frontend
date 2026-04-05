@@ -8,10 +8,10 @@ import { API_AUTH_PASSKEY } from '../apiConfig';
 const API_BASE = API_AUTH_PASSKEY;
 
 /**
- * Get the JWT token from localStorage.
+ * Get the JWT token from localStorage — checks adminToken first, then student token.
  */
 function getToken() {
-  return localStorage.getItem('token');
+  return localStorage.getItem('adminToken') || localStorage.getItem('token');
 }
 
 /**

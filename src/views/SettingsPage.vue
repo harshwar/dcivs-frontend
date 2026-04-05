@@ -459,7 +459,14 @@ const toast = useToast()
 
 const router = useRouter()
 const activeTab = ref('profile') // Default tab
-const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
+
+// Works for both admins (adminToken) and students (token)
+const isAdmin = !!localStorage.getItem('adminToken')
+function getToken() {
+  return localStorage.getItem('adminToken') || localStorage.getItem('token') || ''
+}
+
+const user = ref(JSON.parse(localStorage.getItem('adminUser') || localStorage.getItem('user') || '{}'))
 
 // Computed
 const userInitials = computed(() => {
@@ -510,7 +517,7 @@ const lastLoginDisplay = computed(() => {
 let sessionTimer = null
 let sessionWarnTimer = null
 function setupSessionExpiry() {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   if (!token) return
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
@@ -558,9 +565,15 @@ const twoFA = reactive({
 })
 
 function logout() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  router.push('/login')
+  if (isAdmin) {
+    localStorage.removeItem('adminToken')
+    localStorage.removeItem('adminUser')
+    router.push('/admin-login')
+  } else {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    router.push('/login')
+  }
 }
 
 function formatDate(dateStr) {
@@ -575,7 +588,7 @@ onMounted(async () => {
     passkeySupported.value = isPasskeySupported()
     setupSessionExpiry()
 
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
         let data = null
         try {
@@ -674,7 +687,7 @@ async function handleSetup2FA() {
   twoFA.error = ''
   
   try {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     const res = await fetch(`${API_BASE_URL}/api/auth/2fa/setup`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -699,7 +712,7 @@ async function handleVerifySetup() {
   twoFA.error = ''
   
   try {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     const res = await fetch(`${API_BASE_URL}/api/auth/2fa/verify-setup`, {
       method: 'POST',
       headers: {
@@ -736,7 +749,7 @@ async function handleDisable2FA() {
   twoFA.error = ''
   
   try {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     const res = await fetch(`${API_BASE_URL}/api/auth/2fa/disable`, {
       method: 'POST',
       headers: {
@@ -778,9 +791,9 @@ async function handleChangePassword() {
   isLoading.value = true
 
   try {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (!token) {
-      router.push('/login')
+      router.push(isAdmin ? '/admin-login' : '/login')
       return
     }
 
