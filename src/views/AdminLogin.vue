@@ -119,6 +119,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import AppFooter from '../components/AppFooter.vue'
 import { loginWithPasskey, isPasskeySupported } from '../services/passkeyService.js'
+import { API_BASE_URL } from '../apiConfig'
 
 const API_BASE = `${API_BASE_URL}/api/auth`
 
